@@ -6,6 +6,7 @@ import fnmatch
 import requests
 import tempfile
 import shutil
+from urllib.parse import urlparse
 from catswitch.list_format import (
     split_list_fields,
     join_list_fields,
@@ -38,6 +39,90 @@ LOCAL_EXCLUDED_FILENAME = 'Local.txt'
 COMMON_EXCLUDED_FILENAME = 'Common.txt'
 COMMON_EXCLUDED_DISPLAY_NAME = 'Common Apps'
 AUTO_EXCLUDED_LIST_NAME = 'Auto-excluded apps'
+_MAX_LIST_DOWNLOAD_BYTES = 10 * 1024 * 1024
+_MAX_LIST_FILENAME_LEN = 120
+_INVALID_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+_HTML_MARKERS = ('<html', '<!doctype', '<head', '<body', '<script', '<style')
+
+
+def _sanitize_list_filename(name: Optional[str], fallback: str = "downloaded_list.txt") -> str:
+    """Return a safe basename under the excluded-lists directory (no path traversal)."""
+    raw = (name or "").strip() or fallback
+    raw = os.path.basename(raw.replace("\\", "/"))
+    raw = _INVALID_FILENAME_CHARS.sub("_", raw).strip(" .")
+    if not raw:
+        raw = fallback
+    if len(raw) > _MAX_LIST_FILENAME_LEN:
+        stem, ext = os.path.splitext(raw)
+        ext = (ext or ".txt")[:10]
+        raw = f"{stem[: max(1, _MAX_LIST_FILENAME_LEN - len(ext))]}{ext}"
+    if not raw.lower().endswith(".txt"):
+        raw = f"{raw}.txt"
+    return raw
+
+
+def _path_inside_excluded_dir(path: str) -> bool:
+    try:
+        base = os.path.realpath(get_excluded_apps_dir())
+        resolved = os.path.realpath(path)
+        return os.path.commonpath([resolved.casefold(), base.casefold()]) == base.casefold()
+    except ValueError:
+        return False
+
+
+def _fetch_remote_list_bytes(url: str) -> Tuple[bool, bytes, Optional[str]]:
+    """Download a remote list over HTTPS only, with size and redirect checks."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        return False, b"", "Only HTTPS URLs are allowed"
+
+    try:
+        with requests.get(url, timeout=10, stream=True, allow_redirects=True) as response:
+            final = urlparse(response.url)
+            if final.scheme.lower() != "https":
+                return False, b"", "Redirect to a non-HTTPS URL is not allowed"
+            if response.status_code != 200:
+                error_msg = f"Failed to download list: Status code {response.status_code}"
+                logger.error(error_msg)
+                return False, b"", error_msg
+
+            content_type = response.headers.get("content-type", "").lower()
+            if not any(
+                text_type in content_type
+                for text_type in ("text/plain", "text/", "application/octet-stream")
+            ):
+                error_msg = (
+                    f"Invalid content type: {content_type}. Expected text file (text/plain)."
+                )
+                logger.error(error_msg)
+                return False, b"", error_msg
+
+            chunks: List[bytes] = []
+            total = 0
+            for chunk in response.iter_content(chunk_size=64 * 1024):
+                if not chunk:
+                    continue
+                total += len(chunk)
+                if total > _MAX_LIST_DOWNLOAD_BYTES:
+                    error_msg = "Remote list exceeds size limit (10 MB)"
+                    logger.error(error_msg)
+                    return False, b"", error_msg
+                chunks.append(chunk)
+            data = b"".join(chunks)
+    except requests.RequestException as exc:
+        error_msg = f"Error downloading list: {exc}"
+        logger.error(error_msg)
+        return False, b"", error_msg
+
+    preview = data[:200].decode("utf-8", errors="ignore").lower()
+    if any(marker in preview for marker in _HTML_MARKERS):
+        error_msg = "Content appears to be HTML, not a text file. Expected plain text format."
+        logger.error(error_msg)
+        return False, b"", error_msg
+
+    return True, data, None
+
+
 DEFAULT_EXCLUDED_LOCAL_CONTENT = build_list_file_header("Custom Apps", "excluded")
 
 # Path to store excluded app lists
@@ -484,41 +569,21 @@ def download_from_url(url: str, name: Optional[str] = None) -> Tuple[bool, str, 
         Tuple of (success, path, error_message)
     """
     try:
-        # Get filename from URL if not provided
-        if not name:
-            name = os.path.basename(url)
-            if not name or not name.strip():
-                name = "downloaded_list.txt"
-                
-        if not name.endswith(".txt"):
-            name = f"{name}.txt"
-            
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            error_msg = f"Failed to download list: Status code {response.status_code}"
-            logger.error(error_msg)
+        name = _sanitize_list_filename(name or os.path.basename(urlparse(url).path))
+
+        ok, data, error_msg = _fetch_remote_list_bytes(url)
+        if not ok:
             return False, "", error_msg
-        
-        # Check content type to ensure it's a text file
-        content_type = response.headers.get('content-type', '').lower()
-        if not any(text_type in content_type for text_type in ['text/plain', 'text/', 'application/octet-stream']):
-            error_msg = f"Invalid content type: {content_type}. Expected text file (text/plain)."
-            logger.error(error_msg)
-            return False, "", error_msg
-        
-        # Additional validation: check if content looks like a text file
-        content_preview = response.text[:200].lower()
-        if any(html_indicator in content_preview for html_indicator in ['<html', '<!doctype', '<head', '<body', '<script', '<style']):
-            error_msg = f"Content appears to be HTML, not a text file. Expected plain text format."
-            logger.error(error_msg)
-            return False, "", error_msg
-            
-        file_path = os.path.join(get_excluded_apps_dir(), name)
-        
-        with open(file_path, 'wb') as f:
-            f.write(response.content)
-            
-        # Add to settings with URL source
+
+        excluded_dir = get_excluded_apps_dir()
+        os.makedirs(excluded_dir, exist_ok=True)
+        file_path = os.path.join(excluded_dir, name)
+        if not _path_inside_excluded_dir(file_path):
+            return False, "", "Invalid list name"
+
+        with open(file_path, "wb") as handle:
+            handle.write(data)
+
         add_excluded_app_file(name, file_path, "url", url)
         return True, file_path, None
     except Exception as e:
@@ -538,27 +603,10 @@ def load_from_url_live(url: str) -> Tuple[bool, str, Optional[str]]:
         Tuple of (success, content, error_message)
     """
     try:
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            error_msg = f"Failed to load list: Status code {response.status_code}"
-            logger.error(error_msg)
+        ok, data, error_msg = _fetch_remote_list_bytes(url)
+        if not ok:
             return False, "", error_msg
-        
-        # Check content type to ensure it's a text file
-        content_type = response.headers.get('content-type', '').lower()
-        if not any(text_type in content_type for text_type in ['text/plain', 'text/', 'application/octet-stream']):
-            error_msg = f"Invalid content type: {content_type}. Expected text file (text/plain)."
-            logger.error(error_msg)
-            return False, "", error_msg
-        
-        # Additional validation: check if content looks like a text file
-        content_preview = response.text[:200].lower()
-        if any(html_indicator in content_preview for html_indicator in ['<html', '<!doctype', '<head', '<body', '<script', '<style']):
-            error_msg = f"Content appears to be HTML, not a text file. Expected plain text format."
-            logger.error(error_msg)
-            return False, "", error_msg
-            
-        return True, response.text, None
+        return True, data.decode("utf-8", errors="replace"), None
     except Exception as e:
         error_msg = f"Error loading from URL: {str(e)}"
         logger.error(error_msg)
@@ -575,26 +623,24 @@ def update_from_url(path: str) -> Tuple[bool, Optional[str]]:
         Tuple of (success, error_message)
     """
     try:
-        # Find the list in settings
         list_info = next((f for f in get_excluded_app_files() if f.get("path") == path), None)
         if not list_info:
             return False, "List not found in settings"
-            
+
         url = list_info.get("url")
         if not url:
             return False, "No URL found for this list"
-            
-        # Download the list to a temporary location
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            error_msg = f"Failed to download list: Status code {response.status_code}"
-            logger.error(error_msg)
+
+        if not _path_inside_excluded_dir(path):
+            return False, "Invalid list path"
+
+        ok, data, error_msg = _fetch_remote_list_bytes(url)
+        if not ok:
             return False, error_msg
-            
-        # Write to the original path
-        with open(path, 'wb') as f:
-            f.write(response.content)
-            
+
+        with open(path, "wb") as handle:
+            handle.write(data)
+
         return True, None
     except Exception as e:
         error_msg = f"Error updating list: {str(e)}"

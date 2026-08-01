@@ -7,6 +7,8 @@ Notable changes to CatSwitch.
 ### Security
 - Added CSRF protection to the local API (Host / Origin / Sec-Fetch-Site checks)
 - Changed destructive list and update endpoints from GET to POST
+- Fixed path traversal in remote exclusion-list downloads
+- Limited remote list downloads to HTTPS and a 10 MB size cap
 
 ## 0.1.0
 
