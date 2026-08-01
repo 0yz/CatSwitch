@@ -3752,7 +3752,11 @@ function confirmUpdateList() {
     const list = appState.excludedApps.selectedList;
     
     // Send API request
-    fetch(`/api/excluded-apps/update?path=${encodeURIComponent(list.path)}`)
+    fetch('/api/excluded-apps/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: list.path }),
+    })
     .then(response => response.json())
     .then(result => {
         closeModal();
@@ -3825,7 +3829,11 @@ function confirmRemoveList() {
     }
     
     // Send API request
-    fetch(`/api/excluded-apps/remove?path=${encodeURIComponent(list.path)}&delete=${deleteFile}`)
+    fetch('/api/excluded-apps/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: list.path, delete: deleteFile }),
+    })
     .then(response => response.json())
     .then(result => {
         closeModal();
@@ -3937,7 +3945,7 @@ function handleReloadExcludedApps() {
 }
 
 function openListFolder(apiPrefix) {
-    fetch(`${apiPrefix}/open-folder`)
+    fetch(`${apiPrefix}/open-folder`, { method: 'POST' })
         .then(response => response.json())
         .then(result => {
             if (!result.success) {
@@ -4679,7 +4687,11 @@ function setupRemoveAppListModal() {
     if (confirmBtn) {
         confirmBtn.onclick = () => {
             // Make API call to remove the list
-            fetch(`/api/apps/remove?path=${encodeURIComponent(appState.apps.selectedList.path)}`)
+            fetch('/api/apps/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: appState.apps.selectedList.path }),
+            })
                 .then(response => response.json())
                 .then(result => {
                     if (result.success) {

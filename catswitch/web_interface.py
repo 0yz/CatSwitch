@@ -76,6 +76,59 @@ app = Flask(
 # Setup logging
 logger = logging.getLogger(__name__)
 
+# Fixed local UI port (must match desktop_app.LOCAL_SERVER_PORT / Twitch redirect).
+_LOCAL_UI_PORT = 51111
+_ALLOWED_HOSTS = frozenset({
+    f"127.0.0.1:{_LOCAL_UI_PORT}",
+    f"localhost:{_LOCAL_UI_PORT}",
+    f"[::1]:{_LOCAL_UI_PORT}",
+})
+_ALLOWED_ORIGINS = frozenset({
+    f"http://127.0.0.1:{_LOCAL_UI_PORT}",
+    f"http://localhost:{_LOCAL_UI_PORT}",
+    f"http://[::1]:{_LOCAL_UI_PORT}",
+})
+
+
+@app.before_request
+def _protect_local_api():
+    """Block DNS-rebinding and cross-site calls to the loopback API."""
+    host = (request.host or "").lower()
+    if host not in _ALLOWED_HOSTS:
+        logger.warning("Rejected request with Host=%r path=%r", request.host, request.path)
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not request.path.startswith("/api/"):
+        return None
+
+    site = (request.headers.get("Sec-Fetch-Site") or "").lower()
+    if site and site != "same-origin":
+        logger.warning(
+            "Rejected cross-site API request Sec-Fetch-Site=%r path=%r",
+            site,
+            request.path,
+        )
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    origin = (request.headers.get("Origin") or "").rstrip("/")
+    if origin and origin not in _ALLOWED_ORIGINS:
+        logger.warning("Rejected API request with Origin=%r path=%r", origin, request.path)
+        return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    if not origin:
+        referer = request.headers.get("Referer") or ""
+        if referer and not any(
+            referer == allowed or referer.startswith(allowed + "/")
+            for allowed in _ALLOWED_ORIGINS
+        ):
+            logger.warning(
+                "Rejected API request with Referer=%r path=%r", referer, request.path
+            )
+            return jsonify({"success": False, "error": "Forbidden"}), 403
+
+    return None
+
+
 # Global state
 CLIENT_ID = None
 OAUTH_TOKEN = None
@@ -1291,19 +1344,17 @@ def api_updates_status():
     })
 
 
-@app.route('/api/updates/check', methods=['GET', 'POST'])
+@app.route('/api/updates/check', methods=['POST'])
 def api_updates_check():
     from catswitch import updater
 
-    force = True
-    if request.method == 'GET':
-        force = request.args.get('force', '1') != '0'
+    data = request.get_json(silent=True) or {}
+    if 'force' in data:
+        force = bool(data.get('force'))
+    elif request.args.get('startup') == '1':
+        force = updater.should_run_startup_check()
     else:
-        data = request.get_json(silent=True) or {}
-        if 'force' in data:
-            force = bool(data.get('force'))
-        elif request.args.get('startup') == '1':
-            force = updater.should_run_startup_check()
+        force = True
 
     if not force:
         cached = updater.get_cached_check_result()
@@ -2441,7 +2492,7 @@ def add_local_list():
             'error': str(e)
         })
 
-@app.route('/api/excluded-apps/open-file-dialog', methods=['GET'])
+@app.route('/api/excluded-apps/open-file-dialog', methods=['POST'])
 def open_file_dialog():
     """Open a file dialog to select a local file"""
     logger.info("File dialog API endpoint called")
@@ -2615,11 +2666,12 @@ def api_excluded_apps_save_content():
         logger.error(f"Error saving excluded apps list content: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/excluded-apps/update', methods=['GET'])
+@app.route('/api/excluded-apps/update', methods=['POST'])
 def api_excluded_apps_update():
     """API endpoint to update an excluded apps list from its source URL."""
     try:
-        path = request.args.get('path', '')
+        data = request.get_json(silent=True) or {}
+        path = data.get('path', '')
         
         if not path:
             return jsonify({'success': False, 'error': 'Path is required'})
@@ -2634,12 +2686,13 @@ def api_excluded_apps_update():
         logger.error(f"Error updating excluded apps list: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/excluded-apps/remove', methods=['GET'])
+@app.route('/api/excluded-apps/remove', methods=['POST'])
 def api_excluded_apps_remove():
     """API endpoint to remove an excluded apps list."""
     try:
-        path = request.args.get('path', '')
-        delete_file_param = request.args.get('delete', 'false').lower() == 'true'
+        data = request.get_json(silent=True) or {}
+        path = data.get('path', '')
+        delete_file_param = bool(data.get('delete', False))
         
         if not path:
             return jsonify({'success': False, 'error': 'Path is required'})
@@ -2720,7 +2773,7 @@ def api_excluded_apps_open_file():
         logger.error(f"Error opening excluded apps file: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/excluded-apps/open-folder', methods=['GET'])
+@app.route('/api/excluded-apps/open-folder', methods=['POST'])
 def api_excluded_apps_open_folder():
     """Open the excluded apps lists folder in the file manager."""
     try:
@@ -2808,7 +2861,7 @@ def api_apps_open_file():
         logger.error(f"Error opening apps list file: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/apps/open-folder', methods=['GET'])
+@app.route('/api/apps/open-folder', methods=['POST'])
 def api_apps_open_folder():
     """Open the apps lists folder in the file manager."""
     try:
@@ -2885,11 +2938,12 @@ def api_apps_reorder():
         logger.error(f"Error reordering apps list: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/apps/remove', methods=['GET'])
+@app.route('/api/apps/remove', methods=['POST'])
 def api_apps_remove():
     """API endpoint to remove an app list."""
     try:
-        path = request.args.get('path', '')
+        data = request.get_json(silent=True) or {}
+        path = data.get('path', '')
         
         if not path:
             return jsonify({'success': False, 'error': 'Path is required'})
@@ -3137,7 +3191,7 @@ def api_detected_apps_add_to_excluded():
         logger.error(f"Error adding detected app to excluded apps: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/api/detected-apps/reload', methods=['GET'])
+@app.route('/api/detected-apps/reload', methods=['POST'])
 def api_detected_apps_reload():
     """API endpoint to reload detected apps from files."""
     try:
