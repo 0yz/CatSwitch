@@ -314,38 +314,58 @@ def _app_exe_path() -> str:
     )
 
 
-def _schedule_silent_install(installer_path: str, work_dir: Optional[str] = None) -> None:
+def _schedule_silent_install(
+    installer_path: str,
+    work_dir: Optional[str] = None,
+    expected_version: Optional[str] = None,
+) -> None:
     """Run apply_update.bat from a private temp dir so Inno is not blocked by us.
 
     Deadlock to avoid: anything still running from {app} (or waiting on Setup
     while locking {app}) makes CloseApplications hang forever.
 
     ``work_dir`` should be a unique ``mkdtemp`` folder (not a fixed %TEMP%\\CatSwitch path).
+    Logs are kept under %LOCALAPPDATA%\\CatSwitch so a failed update can be diagnosed.
     """
     app_exe = _app_exe_path()
     app_dir = os.path.dirname(app_exe)
     if not work_dir:
         work_dir = tempfile.mkdtemp(prefix="CatSwitch-update-")
+
+    log_dir = os.path.join(
+        os.environ.get("LOCALAPPDATA") or tempfile.gettempdir(),
+        "CatSwitch",
+    )
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except OSError:
+        log_dir = work_dir
+
     bat_path = os.path.join(work_dir, "apply_update.bat")
-    log_path = os.path.join(work_dir, "update.log")
+    log_path = os.path.join(log_dir, "update.log")
+    setup_log_path = os.path.join(log_dir, "update-setup.log")
 
     installer_q = os.path.abspath(installer_path).replace('"', "")
     app_q = os.path.abspath(app_exe).replace('"', "")
     app_dir_q = os.path.abspath(app_dir).replace('"', "")
     bat_q = bat_path.replace('"', "")
     log_q = log_path.replace('"', "")
+    setup_log_q = setup_log_path.replace('"', "")
     work_q = os.path.abspath(work_dir).replace('"', "")
+    expected = (expected_version or "").strip().lstrip("vV")
 
-    # Wait until NO CatSwitch.exe remains, then Setup, then launch.
-    # Helper lives only under a private temp folder — never under the install dir.
+    # Wait for CatSwitch.exe to exit, settle locks, run Setup (with retries),
+    # only relaunch when Setup succeeded (and ProductVersion matches when known).
     script = (
         "@echo off\r\n"
-        "setlocal EnableExtensions\r\n"
+        "setlocal EnableExtensions EnableDelayedExpansion\r\n"
         f'set "LOG={log_q}"\r\n'
+        f'set "SETUPLOG={setup_log_q}"\r\n'
         f'set "INSTALLER={installer_q}"\r\n'
         f'set "APP={app_q}"\r\n'
         f'set "APPDIR={app_dir_q}"\r\n'
         f'set "WORKDIR={work_q}"\r\n'
+        f'set "EXPECTED={expected}"\r\n'
         "echo %DATE% %TIME% Waiting for CatSwitch.exe to exit>>\"%LOG%\"\r\n"
         ":wait\r\n"
         'tasklist /FI "IMAGENAME eq CatSwitch.exe" /FO CSV /NH 2>nul '
@@ -354,21 +374,50 @@ def _schedule_silent_install(installer_path: str, work_dir: Optional[str] = None
         "  ping -n 2 127.0.0.1 >nul\r\n"
         "  goto wait\r\n"
         ")\r\n"
-        "echo %DATE% %TIME% App gone; starting Setup>>\"%LOG%\"\r\n"
-        'start "" /wait "%INSTALLER%" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
+        "echo %DATE% %TIME% App gone; settling file locks>>\"%LOG%\"\r\n"
+        "ping -n 4 127.0.0.1 >nul\r\n"
+        'taskkill /F /IM "CatSwitch.exe" /T >nul 2>&1\r\n'
+        "ping -n 2 127.0.0.1 >nul\r\n"
+        "set ATTEMPT=0\r\n"
+        ":runsetup\r\n"
+        "set /a ATTEMPT+=1\r\n"
+        "echo %DATE% %TIME% Starting Setup attempt %ATTEMPT%>>\"%LOG%\"\r\n"
+        '"%INSTALLER%" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
         "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NORESTARTAPPLICATIONS "
-        # Always target this install's folder (user's chosen path), not only DefaultDirName.
-        f'/DIR="{app_dir_q}" '
-        f'/LOG="{log_q}.setup.log"\r\n'
+        '/DIR="%APPDIR%" /LOG="%SETUPLOG%"\r\n'
         "set SETUP_EXIT=%ERRORLEVEL%\r\n"
-        "echo %DATE% %TIME% Setup exit code %SETUP_EXIT%>>\"%LOG%\"\r\n"
-        'if exist "%INSTALLER%" del /f /q "%INSTALLER%" >nul 2>&1\r\n'
-        'if exist "%APP%" (\r\n'
-        "  echo %DATE% %TIME% Launching app>>\"%LOG%\"\r\n"
-        '  start "" /D "%APPDIR%" "%APP%"\r\n'
-        ") else (\r\n"
-        "  echo %DATE% %TIME% App exe missing after Setup>>\"%LOG%\"\r\n"
+        "echo %DATE% %TIME% Setup exit code %SETUP_EXIT% (attempt %ATTEMPT%)>>\"%LOG%\"\r\n"
+        "if not \"%SETUP_EXIT%\"==\"0\" (\r\n"
+        "  if %ATTEMPT% LSS 3 (\r\n"
+        "    echo %DATE% %TIME% Retrying after delay>>\"%LOG%\"\r\n"
+        "    ping -n 4 127.0.0.1 >nul\r\n"
+        "    goto runsetup\r\n"
+        "  )\r\n"
         ")\r\n"
+        'if exist "%INSTALLER%" del /f /q "%INSTALLER%" >nul 2>&1\r\n'
+        "if not \"%SETUP_EXIT%\"==\"0\" (\r\n"
+        "  echo %DATE% %TIME% Setup failed; not launching old build>>\"%LOG%\"\r\n"
+        "  goto cleanup\r\n"
+        ")\r\n"
+        'if not exist "%APP%" (\r\n'
+        "  echo %DATE% %TIME% App exe missing after successful Setup>>\"%LOG%\"\r\n"
+        "  set SETUP_EXIT=1\r\n"
+        "  goto cleanup\r\n"
+        ")\r\n"
+        "if not \"%EXPECTED%\"==\"\" (\r\n"
+        "  for /f \"usebackq delims=\" %%V in (`powershell -NoProfile -Command "
+        "\"try { (Get-Item -LiteralPath '%APP%').VersionInfo.ProductVersion } "
+        "catch { '' }\"`) do set \"GOT=%%V\"\r\n"
+        "  echo %DATE% %TIME% Installed ProductVersion=[!GOT!] expected=[%EXPECTED%]>>\"%LOG%\"\r\n"
+        "  if /I not \"!GOT!\"==\"%EXPECTED%\" (\r\n"
+        "    echo %DATE% %TIME% Version mismatch after Setup; not launching>>\"%LOG%\"\r\n"
+        "    set SETUP_EXIT=1\r\n"
+        "    goto cleanup\r\n"
+        "  )\r\n"
+        ")\r\n"
+        "echo %DATE% %TIME% Launching updated app>>\"%LOG%\"\r\n"
+        'start "" /D "%APPDIR%" "%APP%"\r\n'
+        ":cleanup\r\n"
         f'del /f /q "{bat_q}" >nul 2>&1\r\n'
         'cd /d "%TEMP%"\r\n'
         'rd /s /q "%WORKDIR%" >nul 2>&1\r\n'
@@ -450,7 +499,11 @@ def begin_install_update() -> Dict[str, Any]:
                 "status": status,
             }
 
-        _schedule_silent_install(dest_path, work_dir=work_dir)
+        _schedule_silent_install(
+            dest_path,
+            work_dir=work_dir,
+            expected_version=status.get("latest") or "",
+        )
         return {
             "success": True,
             "message": "Installer ready. The app will close and update.",
@@ -492,7 +545,7 @@ def request_app_exit_for_update() -> None:
     """Quit so the temp helper can run Setup without CloseApplications deadlock."""
     from catswitch.desktop_app import schedule_force_process_exit
 
-    schedule_force_process_exit(1.5)
+    schedule_force_process_exit(2.5)
     try:
         import webview
 

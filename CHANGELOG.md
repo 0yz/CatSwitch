@@ -20,6 +20,7 @@ Notable changes to CatSwitch.
 - Added Help, Changelog, and Issues links on the Info tab
 - Fixed a potential issue with applying Twitch category
 - Silent updates always reinstall into the existing install folder (`/DIR=` + saved InstallPath)
+- Hardened silent updates: wait for file locks, retry Setup, only relaunch if install succeeds
 
 ## 0.1.0
 
