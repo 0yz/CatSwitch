@@ -535,24 +535,62 @@ def create_game_detection_thread():
 
                 if is_existing_match:
                     logger.info(f"Applying saved app category instantly: {game}")
-                    current_twitch_category = game
+                    previous_category = current_twitch_category
+                    should_update_twitch = (
+                        not current_twitch_category
+                        or current_twitch_category.strip().casefold() != game.strip().casefold()
+                    )
                     if box_art_url and str(box_art_url).startswith('/'):
-                        current_box_art_url = box_art_url
+                        ui_art = box_art_url
                     else:
-                        current_box_art_url = category_cache.resolve_box_art(
+                        ui_art = category_cache.resolve_box_art(
                             game, box_art_url, fetch_if_missing=False
                         )
                     ui_game = game
-                    ui_art = current_box_art_url
                 else:
                     should_update_twitch = game != current_twitch_category
                     previous_category = current_twitch_category
                     unchanged_art = current_box_art_url
 
             if is_existing_match:
+                # Instant UI; still push category to Twitch (do not set
+                # current_twitch_category first — update_stream_category skips when
+                # local state already matches).
                 update_ui_with_game(ui_game, ui_art, False, process_name, True, window_title)
-                maybe_apply_title_preset(ui_game, process_name, window_title)
-                logger.info(f"Saved app category applied instantly: {ui_game}")
+                if should_update_twitch:
+                    logger.info(
+                        f"Updating Twitch category: {ui_game} (previous: {previous_category})"
+                    )
+                    try:
+                        updated, twitch_box_art_url = update_stream_category(
+                            CLIENT_ID, OAUTH_TOKEN, ui_game
+                        )
+                        with app_state_lock:
+                            if CATEGORY_LOCKED or not is_detection_generation_current(generation):
+                                return
+                            if updated:
+                                current_twitch_category = ui_game
+                                if twitch_box_art_url:
+                                    current_box_art_url = category_cache.upsert_template(
+                                        ui_game, twitch_box_art_url
+                                    )
+                                else:
+                                    current_box_art_url = ui_art or current_box_art_url
+                        if updated:
+                            maybe_apply_title_preset(ui_game, process_name, window_title)
+                            logger.info(f"Saved app category applied on Twitch: {ui_game}")
+                        else:
+                            logger.warning(
+                                f"Saved app UI updated but Twitch category failed: {ui_game}"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error updating category for saved app: {e}")
+                else:
+                    with app_state_lock:
+                        current_twitch_category = ui_game
+                        current_box_art_url = ui_art or current_box_art_url
+                    maybe_apply_title_preset(ui_game, process_name, window_title)
+                    logger.info(f"Saved app category already active on Twitch: {ui_game}")
                 return
 
             if should_update_twitch:

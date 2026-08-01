@@ -18,6 +18,7 @@ Notable changes to CatSwitch.
 - Require Edge WebView2 at startup (Download / Exit dialog if missing; no MSHTML fallback)
 - Ignore window-title churn once the focused process is already identified as a game
 - Added Help, Changelog, and Issues links on the Info tab
+- Fixed a potential issue with applying Twitch category
 
 ## 0.1.0
 
