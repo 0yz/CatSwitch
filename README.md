@@ -36,6 +36,6 @@ python package.py --installer
 
 https://switch.cat/
 
-## License
+## Legal
 
 [GPL-3.0](LICENSE) · [Privacy](PRIVACY.md) · [Third-party notices](THIRD_PARTY_NOTICES.txt)
