@@ -1,9 +1,9 @@
 """
 GitHub Releases updater for CatSwitch.
 
-Checks for a newer Setup.exe, downloads it, then runs a helper script from
-%TEMP% (never from the install dir). That script waits until CatSwitch.exe is
-gone, runs Setup silently, then launches the new app.
+Checks for a newer Setup.exe, downloads it, then runs a helper script from a
+private mkdtemp folder under %TEMP% (never from the install dir). That script
+waits until CatSwitch.exe is gone, runs Setup silently, then launches the new app.
 
 Inno CloseApplications waits on any process still using {app} files — so the
 helper must not live under {app}, and Setup must not start until the app exits.
@@ -314,16 +314,18 @@ def _app_exe_path() -> str:
     )
 
 
-def _schedule_silent_install(installer_path: str) -> None:
-    """Run apply_update.bat from %TEMP% so Inno is not blocked by this process.
+def _schedule_silent_install(installer_path: str, work_dir: Optional[str] = None) -> None:
+    """Run apply_update.bat from a private temp dir so Inno is not blocked by us.
 
     Deadlock to avoid: anything still running from {app} (or waiting on Setup
     while locking {app}) makes CloseApplications hang forever.
+
+    ``work_dir`` should be a unique ``mkdtemp`` folder (not a fixed %TEMP%\\CatSwitch path).
     """
     app_exe = _app_exe_path()
     app_dir = os.path.dirname(app_exe)
-    work_dir = os.path.join(tempfile.gettempdir(), "CatSwitch")
-    os.makedirs(work_dir, exist_ok=True)
+    if not work_dir:
+        work_dir = tempfile.mkdtemp(prefix="CatSwitch-update-")
     bat_path = os.path.join(work_dir, "apply_update.bat")
     log_path = os.path.join(work_dir, "update.log")
 
@@ -332,9 +334,10 @@ def _schedule_silent_install(installer_path: str) -> None:
     app_dir_q = os.path.abspath(app_dir).replace('"', "")
     bat_q = bat_path.replace('"', "")
     log_q = log_path.replace('"', "")
+    work_q = os.path.abspath(work_dir).replace('"', "")
 
     # Wait until NO CatSwitch.exe remains, then Setup, then launch.
-    # Helper lives only under %TEMP% — never under the install folder.
+    # Helper lives only under a private temp folder — never under the install dir.
     script = (
         "@echo off\r\n"
         "setlocal EnableExtensions\r\n"
@@ -342,6 +345,7 @@ def _schedule_silent_install(installer_path: str) -> None:
         f'set "INSTALLER={installer_q}"\r\n'
         f'set "APP={app_q}"\r\n'
         f'set "APPDIR={app_dir_q}"\r\n'
+        f'set "WORKDIR={work_q}"\r\n'
         "echo %DATE% %TIME% Waiting for CatSwitch.exe to exit>>\"%LOG%\"\r\n"
         ":wait\r\n"
         'tasklist /FI "IMAGENAME eq CatSwitch.exe" /FO CSV /NH 2>nul '
@@ -364,6 +368,8 @@ def _schedule_silent_install(installer_path: str) -> None:
         "  echo %DATE% %TIME% App exe missing after Setup>>\"%LOG%\"\r\n"
         ")\r\n"
         f'del /f /q "{bat_q}" >nul 2>&1\r\n'
+        'cd /d "%TEMP%"\r\n'
+        'rd /s /q "%WORKDIR%" >nul 2>&1\r\n'
         "exit /b %SETUP_EXIT%\r\n"
     )
     with open(bat_path, "w", encoding="utf-8", newline="") as handle:
@@ -393,6 +399,7 @@ def begin_install_update() -> Dict[str, Any]:
         _install_in_progress = True
 
     dest_path: Optional[str] = None
+    work_dir: Optional[str] = None
     try:
         status = check_for_updates(force=True)
         if not status.get("update_available"):
@@ -419,9 +426,8 @@ def begin_install_update() -> Dict[str, Any]:
 
         asset_name = status.get("asset_name") or "CatSwitch-Setup-0.0.0.exe"
         safe_name = re.sub(r"[^\w.\-]+", "_", asset_name)
-        dest_dir = os.path.join(tempfile.gettempdir(), "CatSwitch")
-        os.makedirs(dest_dir, exist_ok=True)
-        dest_path = os.path.join(dest_dir, safe_name)
+        work_dir = tempfile.mkdtemp(prefix="CatSwitch-update-")
+        dest_path = os.path.join(work_dir, safe_name)
 
         logger.info("Downloading update to %s", dest_path)
         _download_installer(download_url, dest_path)
@@ -442,7 +448,7 @@ def begin_install_update() -> Dict[str, Any]:
                 "status": status,
             }
 
-        _schedule_silent_install(dest_path)
+        _schedule_silent_install(dest_path, work_dir=work_dir)
         return {
             "success": True,
             "message": "Installer ready. The app will close and update.",
@@ -468,6 +474,16 @@ def begin_install_update() -> Dict[str, Any]:
     finally:
         with _install_lock:
             _install_in_progress = False
+        # On failure before scheduling, drop the private temp dir.
+        if work_dir and dest_path and not os.path.isfile(
+            os.path.join(work_dir, "apply_update.bat")
+        ):
+            try:
+                import shutil
+
+                shutil.rmtree(work_dir, ignore_errors=True)
+            except OSError:
+                pass
 
 
 def request_app_exit_for_update() -> None:

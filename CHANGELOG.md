@@ -12,6 +12,7 @@ Notable changes to CatSwitch.
 - Fixed XSS from unescaped remote list names in the UI
 - Fixed path containment checks to resolve symlinks and ignore Windows path casing
 - Replaced the tkinter file dialog with the native pywebview dialog
+- Moved update helper files into a private temp folder
 
 ## 0.1.0
 
