@@ -3562,9 +3562,9 @@ function handleExcludedAppsSelection() {
     // Show source info
     if (sourceDiv) {
         if (listInfo.source === 'url') {
-            sourceDiv.innerHTML = `<span class="source-info">${icon('globe-alt', 'icon-sm')}<span><strong>Source:</strong> ${listInfo.url}</span></span>`;
+            sourceDiv.innerHTML = `<span class="source-info">${icon('globe-alt', 'icon-sm')}<span><strong>Source:</strong> ${escapeHtml(listInfo.url)}</span></span>`;
         } else {
-            sourceDiv.innerHTML = `<span class="source-info">${icon('folder', 'icon-sm')}<span><strong>Location:</strong> ${listInfo.path}</span></span>`;
+            sourceDiv.innerHTML = `<span class="source-info">${icon('folder', 'icon-sm')}<span><strong>Location:</strong> ${escapeHtml(listInfo.path)}</span></span>`;
         }
         sourceDiv.style.display = 'block';
     }
@@ -3733,7 +3733,7 @@ function handleUpdateList() {
     // Confirm update
     elements.modalTitle.textContent = 'Update List';
     elements.modalContent.innerHTML = `
-        <p>Are you sure you want to update "${list.name}" from its source URL?</p>
+        <p>Are you sure you want to update "${escapeHtml(list.name)}" from its source URL?</p>
     `;
     
     // Show the modal
@@ -3784,11 +3784,11 @@ function handleRemoveList() {
     
     if (isUrlSource) {
         elements.modalContent.innerHTML = `
-            <p>Do you really want to remove "${list.name}"?</p>
+            <p>Do you really want to remove "${escapeHtml(list.name)}"?</p>
         `;
     } else {
         elements.modalContent.innerHTML = `
-            <p>How do you want to remove "${list.name}"?</p>
+            <p>How do you want to remove "${escapeHtml(list.name)}"?</p>
             <div class="radio-group">
                 <label>
                     <input type="radio" name="remove-option" value="keep" checked>
@@ -4566,9 +4566,9 @@ function handleAppsSelection() {
     // Show source info
     if (sourceDiv) {
         if (selectedOption.dataset.source === 'url') {
-            sourceDiv.innerHTML = `<span class="source-info">${icon('globe-alt', 'icon-sm')}<span><strong>Source:</strong> ${selectedOption.dataset.url}</span></span>`;
+            sourceDiv.innerHTML = `<span class="source-info">${icon('globe-alt', 'icon-sm')}<span><strong>Source:</strong> ${escapeHtml(selectedOption.dataset.url)}</span></span>`;
         } else {
-            sourceDiv.innerHTML = `<span class="source-info">${icon('folder', 'icon-sm')}<span><strong>Location:</strong> ${selectedOption.value}</span></span>`;
+            sourceDiv.innerHTML = `<span class="source-info">${icon('folder', 'icon-sm')}<span><strong>Location:</strong> ${escapeHtml(selectedOption.value)}</span></span>`;
         }
         sourceDiv.style.display = 'block';
     }

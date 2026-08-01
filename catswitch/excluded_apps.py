@@ -41,7 +41,9 @@ COMMON_EXCLUDED_DISPLAY_NAME = 'Common Apps'
 AUTO_EXCLUDED_LIST_NAME = 'Auto-excluded apps'
 _MAX_LIST_DOWNLOAD_BYTES = 10 * 1024 * 1024
 _MAX_LIST_FILENAME_LEN = 120
+_MAX_LIST_DISPLAY_NAME_LEN = 120
 _INVALID_FILENAME_CHARS = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
+_CONTROL_CHARS = re.compile(r'[\x00-\x1f\x7f]')
 _HTML_MARKERS = ('<html', '<!doctype', '<head', '<body', '<script', '<style')
 
 
@@ -535,26 +537,41 @@ def extract_list_name_from_content(content: str) -> Optional[str]:
 
     first_line = content.splitlines()[0].strip()
     if first_line.startswith('#'):
-        name = first_line[1:].strip()
-        return name or None
+        return sanitize_list_display_name(first_line[1:])
     return None
+
+
+def sanitize_list_display_name(
+    name: Optional[str],
+    fallback: Optional[str] = None,
+) -> Optional[str]:
+    """Strip control chars and length-cap a list display name (XSS / UI safety)."""
+    if name is None:
+        return fallback
+    text = _CONTROL_CHARS.sub("", str(name))
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return fallback
+    if len(text) > _MAX_LIST_DISPLAY_NAME_LEN:
+        text = text[:_MAX_LIST_DISPLAY_NAME_LEN].rstrip()
+    return text or fallback
 
 
 def resolve_url_list_name(content: str, url: str, custom_name: Optional[str] = None) -> str:
     """Resolve the display name for a URL-based list."""
     if custom_name and custom_name.strip():
-        return custom_name.strip()
+        return sanitize_list_display_name(custom_name, fallback="url_list") or "url_list"
 
     baked_name = extract_list_name_from_content(content)
     if baked_name:
         return baked_name
 
-    name = os.path.basename(url)
+    name = os.path.basename(urlparse(url).path)
     if not name or not name.strip():
         name = "url_list"
     if not name.endswith(".txt"):
         name = f"{name}.txt"
-    return name
+    return sanitize_list_display_name(name, fallback="url_list.txt") or "url_list.txt"
 
 
 def download_from_url(url: str, name: Optional[str] = None) -> Tuple[bool, str, Optional[str]]:

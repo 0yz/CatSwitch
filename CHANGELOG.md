@@ -9,6 +9,7 @@ Notable changes to CatSwitch.
 - Changed destructive list and update endpoints from GET to POST
 - Fixed path traversal in remote exclusion-list downloads
 - Limited remote list downloads to HTTPS and a 10 MB size cap
+- Fixed XSS from unescaped remote list names in the UI
 
 ## 0.1.0
 
