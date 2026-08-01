@@ -1,10 +1,13 @@
 ![CatSwitch — Your fully automatic Twitch category & title switcher](https://switch.cat/wp-content/uploads/2026/08/catSwitchHeaderGit.png)
 
+[![DownloadForWindows](https://github.com/user-attachments/assets/86213616-0464-42bf-aafc-d6c22ce442ce)](https://github.com/0yz/CatSwitch/releases/latest)
+
 # [CatSwitch](https://switch.cat/)
 
 Automatically switch your Twitch category and stream title based on the game you're playing.
 
 ![CatSwitch](https://switch.cat/wp-content/uploads/2026/07/catswitch_007.png)
+
 
 ## How it works
 
