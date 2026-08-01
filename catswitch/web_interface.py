@@ -2728,10 +2728,10 @@ def api_excluded_apps_content():
 
 def _is_path_within(path, directory):
     try:
-        abs_path = os.path.normpath(os.path.abspath(path))
-        abs_dir = os.path.normpath(os.path.abspath(directory))
-        return os.path.commonpath([abs_path, abs_dir]) == abs_dir
-    except ValueError:
+        abs_path = os.path.realpath(path)
+        abs_dir = os.path.realpath(directory)
+        return os.path.commonpath([abs_path.casefold(), abs_dir.casefold()]) == abs_dir.casefold()
+    except (ValueError, OSError):
         return False
 
 def _open_in_os(path):
