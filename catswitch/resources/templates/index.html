@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CatSwitch - Twitch Category Switcher</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/fonts/Switzer.css">
+    <!-- CSS for buttons, forms, and other elements -->
+</head>
+<body>
+    <div class="app-container">
+        <!-- Title Bar -->
+        <div class="title-bar pywebview-drag-region">
+            <div class="title-logo">
+                <svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230.000000 130.000000">
+                    <g transform="translate(0.000000,130.000000) scale(0.100000,-0.100000)" xmlns="http://www.w3.org/2000/svg" fill="var(--white)" stroke="none">
+                    <path d="M1645 1185 c-96 -25 -110 -32 -203 -103 l-72 -55 -42 19 c-78 35 -378 22 -481 -21 -20 -8 -40 -15 -45 -15 -5 0 -36 21 -68 46 -71 55 -196 113 -246 114 -31 0 -78 -53 -98 -112 -15 -44 -20 -84 -20 -166 0 -84 -5 -122 -21 -168 -31 -90 -51 -275 -39 -349 22 -123 72 -240 131 -303 25 -26 33 -30 50 -22 27 15 24 29 -19 91 -98 139 -123 361 -62 549 15 47 23 102 26 195 5 102 10 139 26 173 18 38 24 43 45 37 65 -16 133 -49 177 -85 28 -23 66 -48 85 -56 33 -14 41 -13 101 6 136 45 387 51 455 12 20 -12 42 -22 48 -22 7 0 46 28 87 61 84 68 128 93 180 104 19 3 43 9 52 11 13 4 20 -5 28 -36 6 -22 9 -44 6 -49 -11 -17 16 -213 46 -326 27 -104 31 -138 32 -255 1 -142 -14 -250 -44 -310 -29 -58 -32 -77 -15 -94 9 -8 23 -12 31 -9 25 9 64 111 86 223 25 130 21 295 -12 410 -30 108 -48 207 -51 270 -3 82 -19 212 -29 231 -14 26 -39 27 -125 4z"/>
+                    <path d="M1408 714 c-38 -20 -58 -64 -58 -127 0 -73 15 -113 49 -127 33 -13 66 -3 99 33 19 20 24 36 24 90 2 76 -16 125 -49 138 -31 11 -32 11 -65 -7z"/>
+                    <path d="M635 678 c-26 -31 -27 -36 -21 -108 5 -67 9 -78 36 -102 37 -34 79 -36 106 -7 25 28 25 148 0 196 -31 61 -80 69 -121 21z"/>
+                    <path d="M1187 308 c-8 -18 -24 -42 -36 -53 -24 -21 -22 -21 -85 29 l-37 29 -34 -33 c-37 -36 -47 -34 -65 9 -21 53 -59 48 -60 -7 0 -31 26 -79 49 -92 29 -15 77 -12 95 5 20 20 33 19 63 -5 29 -22 80 -26 103 -7 53 42 77 116 48 145 -19 19 -27 15 -41 -20z"/>
+                    </g>
+                    </svg>
+            </div>
+            <div class="title-text">CatSwitch</div>
+            <div class="window-controls">
+                <div id="minimize-button" class="window-control minimize"><span class="icon icon-minus icon-sm" aria-hidden="true"></span></div>
+                <div id="close-button" class="window-control close"><span class="icon icon-x-mark icon-sm" aria-hidden="true"></span></div>
+            </div>
+        </div>
+        
+        <div class="app-content">
+            <!-- Tab Sidebar -->
+            <div class="tab-sidebar">
+                <div class="tab-sidebar-nav">
+                    <div class="tab-button active" data-tab="home">
+                        <span class="icon icon-home" aria-hidden="true"></span>
+                    </div>
+                    <div class="tab-button" data-tab="categories">
+                        <span class="icon icon-play-circle" aria-hidden="true"></span>
+                    </div>
+                    <div class="tab-button" data-tab="games-apps">
+                        <span class="icon icon-cube" aria-hidden="true"></span>
+                    </div>
+                    <div class="tab-button" data-tab="settings">
+                        <span class="icon icon-cog-6-tooth" aria-hidden="true"></span>
+                    </div>
+                    <div class="tab-button" data-tab="info">
+                        <span class="icon icon-information-circle" aria-hidden="true"></span>
+                    </div>
+                </div>
+                <button type="button" id="sidebarUpdateBtn" class="sidebar-update-btn hidden" title="Update available" aria-label="Update available">
+                    <span class="icon icon-arrow-down-tray icon-md" aria-hidden="true"></span>
+                </button>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="tab-content active" id="home">
+                <div class="main-panel">
+        
+                    <!-- Category Section -->
+                    <div class="category-section">
+                        <div class="category-box">
+                            <div class="box-art-cover box-art-cover--home" id="category-image-wrap">
+                                <div class="box-art-placeholder" aria-hidden="true"></div>
+                                <img id="category-image" class="box-art-image" alt="" hidden>
+                            </div>
+                            <div class="category-info">
+                                <!-- Channel Info -->
+                                <div class="channel-info">
+                                    <button type="button" id="channel-name" class="channel-name account-switcher-trigger" title="Manage accounts">Loading...</button>
+                                </div>
+                                <!-- Category Display/Edit -->
+                                <div class="category-display">
+                                    <h2 id="current-category">Loading...</h2>
+                                    <div id="category-lock" class="lock-icon unlocked" title="Disable automatic category updates">
+                                        <span class="icon icon-lock-open icon-md lock-state-open" aria-hidden="true"></span>
+                                        <span class="icon icon-lock-closed icon-md lock-state-closed" aria-hidden="true"></span>
+                                    </div>
+                                </div>
+                                <div class="category-edit hidden">
+                                    <div class="search-container">
+                                        <input type="text" id="category-search" class="category-input" placeholder="Search categories...">
+                                        <div id="category-search-results" class="search-results"></div>
+                                    </div>
+                                </div>
+        
+                                <!-- Stream Title Display/Edit -->
+                                <div class="title-display">
+                                    <p id="stream-title" class="stream-title">Loading...</p>
+                                    <div id="title-lock" class="lock-icon unlocked" title="Disable automatic title updates">
+                                        <span class="icon icon-lock-open icon-md lock-state-open" aria-hidden="true"></span>
+                                        <span class="icon icon-lock-closed icon-md lock-state-closed" aria-hidden="true"></span>
+                                    </div>
+                                </div>
+                                <div class="title-edit hidden">
+                                    <input type="text" id="title-input" class="title-input" placeholder="Stream title...">
+                                </div>
+
+                                <div class="home-quick-actions">
+                                    <button type="button" id="homeViewToggleBtn" class="home-quick-action-btn" title="Compact view">
+                                        <span class="icon icon-arrows-pointing-in icon-sm home-view-toggle-icon" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" id="homeAlwaysOnTopBtn" class="home-quick-action-btn" title="Always on top">
+                                        <span class="icon icon-window icon-sm" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" id="homeDefaultCategoryBtn" class="home-quick-action-btn" title="Switch to default category">
+                                        <span class="icon icon-puzzle-piece icon-sm" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" id="homeDefaultTitleBtn" class="home-quick-action-btn" title="Switch to default stream title">
+                                        <span class="icon icon-star icon-sm" aria-hidden="true"></span>
+                                    </button>
+                                    <button type="button" id="homeEditCurrentGameBtn" class="home-quick-action-btn" title="Edit current game" disabled>
+                                        <span class="icon icon-pencil-square icon-sm" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Title Presets -->
+                    <div class="home-divider"></div>
+                    <div class="title-presets-section">
+                        <div class="title-presets-main">
+                            <div class="title-presets-list" id="title-presets-list">
+                                <!-- Dynamic content -->
+                            </div>
+                            <div class="title-presets-actions detected-app-actions">
+                                <button type="button" id="presetApplyBtn" class="btn" title="Apply" disabled><span class="icon icon-check-circle icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetAddBtn" class="btn" title="Add New"><span class="icon icon-plus icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetEditBtn" class="btn" title="Edit" disabled><span class="icon icon-pencil-square icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetFavoriteBtn" class="btn" title="Add to favorites" disabled><span class="icon icon-heart icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetAssignBtn" class="btn" title="Assign to game" disabled><span class="icon icon-puzzle-piece icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetDefaultBtn" class="btn" title="Set as default" disabled><span class="icon icon-star icon-sm" aria-hidden="true"></span></button>
+                                <button type="button" id="presetRemoveBtn" class="btn" title="Remove" disabled><span class="icon icon-trash icon-sm" aria-hidden="true"></span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="categories">
+                <div class="detected-apps-back-to-top-anchor">
+                    <button type="button" id="detectedAppsBackToTop" class="detected-apps-back-to-top" title="Back to top">
+                        <span class="icon icon-chevron-up icon-sm" aria-hidden="true"></span>
+                        Back to top
+                    </button>
+                </div>
+                <div class="detected-apps-container">
+                    <div class="filter-group">
+                        <input type="text" id="detectedAppsFilter" placeholder="Filter detected apps..." class="filter-input">
+                        <select id="detectedAppsListFilter" class="filter-select" title="Filter by list">
+                            <option value="">Show all</option>
+                        </select>
+                        <button id="addCategoryBtn" class="btn btn-add" title="Add Category Manually"><span class="icon icon-plus icon-md" aria-hidden="true"></span></button>
+                    </div>
+                    <div class="detected-apps-list" id="detected-apps-list">
+                        <!-- Dynamic content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="games-apps">
+                <div class="games-apps-container">
+                    <!-- Sub-tabs navigation -->
+                    <div class="subtabs-navigation">
+                        <div class="subtab-button active" data-subtab="apps">Detected Games</div>
+                        <div class="subtab-button" data-subtab="excluded-apps">Excluded Apps</div>
+                    </div>
+                    
+                    <!-- Sub-tabs content -->
+                    <div class="subtab-content active" id="apps">
+                        <div class="excluded-apps-container">
+                            <div class="excluded-apps-interface">
+                                <div class="excluded-apps-main-row">
+                                    <div class="excluded-apps-list-container">
+                                        <select id="apps-list" class="excluded-apps-select" size="10">
+                                            <!-- List items will be populated dynamically -->
+                                        </select>
+                                        <div id="apps-source" class="excluded-apps-source hidden">
+                                            <!-- Dynamic source info -->
+                                        </div>
+                                    </div>
+
+                                    <div class="excluded-apps-actions">
+                                        <button id="add-app-list-btn" class="action-button">Add List</button>
+                                        <button id="remove-app-btn" class="action-button" disabled>Remove</button>
+                                        <button id="open-app-file-btn" class="action-button" disabled>Open file</button>
+                                        <button type="button" id="apps-list-enabled-btn" class="action-button" disabled>Disable</button>
+                                        <div class="list-order-row">
+                                            <button type="button" id="apps-move-up-btn" class="action-button list-order-btn" disabled title="Move up"><span class="icon icon-chevron-up icon-sm" aria-hidden="true"></span></button>
+                                            <button type="button" id="apps-move-down-btn" class="action-button list-order-btn" disabled title="Move down"><span class="icon icon-chevron-down icon-sm" aria-hidden="true"></span></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="excluded-apps-footer-row">
+                                    <button type="button" id="apps-show-folder-btn" class="action-button list-footer-show-folder">Show folder</button>
+                                    <button type="button" id="apps-reload-btn" class="action-button list-footer-reload">Reload</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="subtab-content" id="excluded-apps">
+                        <div class="excluded-apps-container">
+                            <div class="excluded-apps-interface">
+                                <div class="excluded-apps-main-row">
+                                    <div class="excluded-apps-list-container">
+                                        <select id="excluded-apps-list" class="excluded-apps-select" size="10">
+                                            <!-- List items will be populated dynamically -->
+                                        </select>
+                                        <div id="excluded-apps-source" class="excluded-apps-source hidden">
+                                            <!-- Dynamic source info -->
+                                        </div>
+                                    </div>
+
+                                    <div class="excluded-apps-actions">
+                                        <button id="add-list-btn" class="action-button">Add List</button>
+                                        <button id="edit-btn" class="action-button" disabled>Edit</button>
+                                        <button id="remove-btn" class="action-button" disabled>Remove</button>
+                                        <button id="open-excluded-file-btn" class="action-button" disabled>Open file</button>
+                                        <button type="button" id="excluded-list-enabled-btn" class="action-button" disabled>Disable</button>
+                                    </div>
+                                </div>
+
+                                <div class="excluded-apps-footer-row">
+                                    <button type="button" id="excluded-show-folder-btn" class="action-button list-footer-show-folder">Show folder</button>
+                                    <button type="button" id="excluded-reload-btn" class="action-button list-footer-reload">Reload</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="settings">
+                <div class="settings-container">
+                    <div class="settings-group">
+                        <div class="settings-row">
+                            <label for="settings-theme" class="settings-label">Theme</label>
+                            <select id="settings-theme" class="settings-input form-input settings-select">
+                                <option value="Default.css">Default</option>
+                            </select>
+                            <button
+                                type="button"
+                                id="settings-open-themes-folder"
+                                class="settings-folder-btn"
+                                title="Open themes folder"
+                            >
+                                <span class="icon icon-folder icon-sm" aria-hidden="true"></span>
+                            </button>
+                        </div>
+
+                        <div class="settings-row">
+                            <label for="settings-default-category" class="settings-label">Default category</label>
+                            <div class="settings-input search-container">
+                                <input
+                                    type="text"
+                                    id="settings-default-category"
+                                    class="form-input"
+                                    placeholder="Search categories..."
+                                    autocomplete="off"
+                                >
+                                <div id="settings-default-category-results" class="search-results"></div>
+                            </div>
+                            <span
+                                class="settings-help help-icon icon icon-question-mark-circle icon-sm window-title-tooltip"
+                                data-tooltip="Used when switching to the default category or when a tracked game closes."
+                                tabindex="0"
+                                role="img"
+                                aria-label="Default category help"
+                            ></span>
+                        </div>
+
+                        <div class="settings-row">
+                            <label for="settings-switch-delay" class="settings-label">Switch category after (seconds)</label>
+                            <input
+                                type="number"
+                                id="settings-switch-delay"
+                                class="settings-input form-input settings-number-input"
+                                min="0"
+                                step="1"
+                                value="0"
+                            >
+                            <span
+                                class="settings-help help-icon icon icon-question-mark-circle icon-sm window-title-tooltip"
+                                data-tooltip="How long a window must stay in focus before the category switches. 0 switches immediately."
+                                tabindex="0"
+                                role="img"
+                                aria-label="Switch delay help"
+                            ></span>
+                        </div>
+
+                        <label class="toggle-container settings-toggle-row" for="settings-minimize-to-tray">
+                            <input type="checkbox" id="settings-minimize-to-tray">
+                            <span class="toggle-label">Minimize to tray</span>
+                        </label>
+
+                        <label class="toggle-container settings-toggle-row" for="settings-autostart-windows">
+                            <input type="checkbox" id="settings-autostart-windows">
+                            <span class="toggle-label">Start with Windows (minimized)</span>
+                        </label>
+
+                        <label class="toggle-container settings-toggle-row" for="settings-auto-lock-category">
+                            <input type="checkbox" id="settings-auto-lock-category">
+                            <span class="toggle-label">Auto-lock category on manual update</span>
+                        </label>
+
+                        <label class="toggle-container settings-toggle-row" for="settings-auto-lock-title">
+                            <input type="checkbox" id="settings-auto-lock-title">
+                            <span class="toggle-label">Auto-lock title on manual update</span>
+                        </label>
+
+                        <label class="toggle-container settings-toggle-row" for="settings-use-discord-detectable">
+                            <input type="checkbox" id="settings-use-discord-detectable">
+                            <span class="toggle-label">Use Discord's detected games list to auto-exclude apps</span>
+                            <span class="settings-help help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="Disabling this option will increase false positives. Discord is not required."></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="info">
+                <div class="info-tab-layout" id="infoTabLayout">
+                    <div class="info-tab-main" id="infoTabMain">
+                        <div class="info-container">
+                            <div class="info-header">
+                                <div class="info-header-left">
+                                    <h2 class="info-app-title">CatSwitch v{{ app_version }}</h2>
+                                    <div class="info-update-meta">
+                                        <div class="info-update-status" id="infoUpdateStatus" hidden></div>
+                                        <span class="info-last-checked" id="infoLastChecked">Last checked: never</span>
+                                    </div>
+                                </div>
+                                <div class="info-header-right">
+                                    <button type="button" class="btn btn-secondary" id="infoUpdateActionBtn">Search for updates</button>
+                                </div>
+                            </div>
+                            <div class="info-divider"></div>
+                            <div class="info-links-grid">
+                                <a class="btn btn-secondary info-link-btn" href="https://ko-fi.com/kennymartin" target="_blank" rel="noopener noreferrer">Donate</a>
+                                <a class="btn btn-secondary info-link-btn" href="https://github.com/0yz/catswitch" target="_blank" rel="noopener noreferrer">GitHub</a>
+                                <a class="btn btn-secondary info-link-btn" href="https://switch.cat/" target="_blank" rel="noopener noreferrer">Web</a>
+                            </div>
+                            <div class="info-legal">
+                                <div class="info-legal-links">
+                                    <button type="button" class="info-legal-link" data-legal-file="license">License</button>
+                                    <button type="button" class="info-legal-link" data-legal-file="privacy">Privacy Policy</button>
+                                    <button type="button" class="info-legal-link" data-legal-file="notices">Third party notices</button>
+                                </div>
+                                <p class="info-copyright">&copy; {{ copyright_year }} CatSwitch / <a href="https://github.com/0yz" target="_blank" rel="noopener noreferrer">github.com/0yz</a></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-console" id="infoConsole">
+                        <button type="button" class="info-console-toggle" id="infoConsoleToggle" aria-expanded="false">
+                            <span class="info-console-toggle-label">Console</span>
+                            <span class="icon icon-chevron-up icon-sm info-console-toggle-icon" aria-hidden="true"></span>
+                        </button>
+                        <div class="info-console-view" id="infoConsoleView" hidden>
+                            <pre class="info-console-output" id="infoConsoleOutput" tabindex="0" aria-readonly="true"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- First-run / logged-out welcome (covers app below title bar) -->
+        <div id="welcome-screen" class="welcome-screen hidden">
+            <div class="welcome-content">
+                <div class="welcome-logo">
+                    <svg version="1.0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230.000000 130.000000" aria-hidden="true">
+                        <g transform="translate(0.000000,130.000000) scale(0.100000,-0.100000)" fill="var(--accent-color)" stroke="none">
+                            <path d="M1645 1185 c-96 -25 -110 -32 -203 -103 l-72 -55 -42 19 c-78 35 -378 22 -481 -21 -20 -8 -40 -15 -45 -15 -5 0 -36 21 -68 46 -71 55 -196 113 -246 114 -31 0 -78 -53 -98 -112 -15 -44 -20 -84 -20 -166 0 -84 -5 -122 -21 -168 -31 -90 -51 -275 -39 -349 22 -123 72 -240 131 -303 25 -26 33 -30 50 -22 27 15 24 29 -19 91 -98 139 -123 361 -62 549 15 47 23 102 26 195 5 102 10 139 26 173 18 38 24 43 45 37 65 -16 133 -49 177 -85 28 -23 66 -48 85 -56 33 -14 41 -13 101 6 136 45 387 51 455 12 20 -12 42 -22 48 -22 7 0 46 28 87 61 84 68 128 93 180 104 19 3 43 9 52 11 13 4 20 -5 28 -36 6 -22 9 -44 6 -49 -11 -17 16 -213 46 -326 27 -104 31 -138 32 -255 1 -142 -14 -250 -44 -310 -29 -58 -32 -77 -15 -94 9 -8 23 -12 31 -9 25 9 64 111 86 223 25 130 21 295 -12 410 -30 108 -48 207 -51 270 -3 82 -19 212 -29 231 -14 26 -39 27 -125 4z"/>
+                            <path d="M1408 714 c-38 -20 -58 -64 -58 -127 0 -73 15 -113 49 -127 33 -13 66 -3 99 33 19 20 24 36 24 90 2 76 -16 125 -49 138 -31 11 -32 11 -65 -7z"/>
+                            <path d="M635 678 c-26 -31 -27 -36 -21 -108 5 -67 9 -78 36 -102 37 -34 79 -36 106 -7 25 28 25 148 0 196 -31 61 -80 69 -121 21z"/>
+                            <path d="M1187 308 c-8 -18 -24 -42 -36 -53 -24 -21 -22 -21 -85 29 l-37 29 -34 -33 c-37 -36 -47 -34 -65 9 -21 53 -59 48 -60 -7 0 -31 26 -79 49 -92 29 -15 77 -12 95 5 20 20 33 19 63 -5 29 -22 80 -26 103 -7 53 42 77 116 48 145 -19 19 -27 15 -41 -20z"/>
+                        </g>
+                    </svg>
+                </div>
+                <h1 class="welcome-title">Welcome to <span>CatSwitch</span></h1>
+                <button type="button" id="welcome-login-btn" class="btn btn-twitch">Login with Twitch</button>
+                <p class="welcome-subtitle">Automatically switch your Twitch category based on what you're playing.</p>
+                <p id="welcome-login-status" class="welcome-status hidden"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shown only in the external browser after Twitch redirects back -->
+    <div id="oauth-callback-screen" class="oauth-callback-screen hidden">
+        <div class="oauth-callback-content">
+            <div id="oauth-callback-icon" class="oauth-callback-icon" data-state="loading">
+                <div class="oauth-callback-spinner" aria-hidden="true"></div>
+                <span class="icon icon-check-circle icon-xl oauth-callback-check" aria-hidden="true"></span>
+                <span class="icon icon-x-circle icon-xl oauth-callback-error" aria-hidden="true"></span>
+            </div>
+            <h2 id="oauth-callback-title">Signing you in…</h2>
+            <p id="oauth-callback-message">Returning to CatSwitch…</p>
+        </div>
+    </div>
+
+    <!-- Account manager -->
+    <div id="accountModal" class="modal">
+        <div class="modal-content edit-modal account-modal-content">
+            <div class="modal-header">
+                <h3>Accounts</h3>
+                <button type="button" class="modal-close" id="accountModalClose" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body account-modal-body">
+                <div id="account-list" class="account-list"></div>
+            </div>
+            <div class="modal-footer account-modal-footer">
+                <button type="button" id="add-account-btn" class="btn btn-secondary account-add-btn">Add account</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div id="modal-container" class="modal-container">
+            <div class="modal-header">
+                <h3 id="modal-title">Modal Title</h3>
+                <button type="button" class="modal-close" id="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div id="modal-content" class="modal-content">
+                <!-- Modal content will be dynamically inserted -->
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="modal-button cancel">Cancel</button>
+                <button id="modal-confirm" class="modal-button confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Startup / full-app loading lock (title bar stays visible above overlay) -->
+    <div id="app-loading-overlay" class="app-loading-overlay pywebview-drag-region" aria-hidden="false">
+        <div class="app-loading-spinner" aria-hidden="true"></div>
+        <p id="app-loading-message" class="app-loading-message">Loading…</p>
+    </div>
+
+    <!-- Offline gate (title bar stays visible above overlay) -->
+    <div id="app-offline-overlay" class="app-loading-overlay app-offline-overlay hidden" aria-hidden="true">
+        <p class="app-offline-message">bruh - you got no internet connection</p>
+        <button type="button" id="app-offline-retry-btn" class="btn btn-primary">retry</button>
+    </div>
+    
+    <!-- Scripts -->
+    <script>window.CATSWITCH_VERSION = {{ app_version|tojson }};</script>
+    <script src="/static/js/app.js"></script>
+
+    <!-- Add List Modal -->
+    <div id="addListModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="addListModalTitle">Add Excluded App List</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="add-list-options">
+                    <div class="add-list-option" id="createNewOption">
+                        <h3>Create New List</h3>
+                        <p>Create a new empty list that you can edit</p>
+                    </div>
+                    <div class="add-list-option" id="addLocalOption">
+                        <h3>Add Local File</h3>
+                        <p>Place a .txt file in the data folder</p>
+                    </div>
+                    <div class="add-list-option" id="addFromUrlOption">
+                        <h3>Add From URL</h3>
+                        <p>Load a list live from the internet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create New List Modal -->
+    <div id="createNewListModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New List</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-input-group">
+                    <label for="newListName">List Name:</label>
+                    <input type="text" id="newListName" placeholder="My Games List">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelNewListBtn">Cancel</button>
+                <button class="btn btn-primary" id="createNewListBtn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Local List Modal -->
+    <div id="addLocalListModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Local List</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <p id="addLocalListMessage" class="add-local-list-message">To add a list, place your .txt file in the data folder, then click Reload.</p>
+            </div>
+            <div class="modal-footer add-local-list-footer">
+                <button type="button" class="action-button add-local-list-folder-btn" id="addLocalListShowFolderBtn">Show folder</button>
+                <button class="btn btn-primary add-local-list-ok-btn" id="addLocalListOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add From URL Modal -->
+    <div id="addFromUrlModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add List From URL <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="This list will be loaded live from the URL each time the app starts or when you click 'Reload'. The content will be fetched from the internet, so make sure the URL is accessible."></span></h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-input-group">
+                    <label for="listUrl">URL:</label>
+                    <input type="url" id="listUrl" placeholder="https://example.com/list.txt" required>
+                </div>
+                <div class="modal-input-group">
+                    <label for="listName">Custom Name (optional):</label>
+                    <input type="text" id="listName" placeholder="Custom name for the list">
+                    <small class="form-text">If left empty, the name from the file header will be used.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelUrlBtn">Cancel</button>
+                <button class="btn btn-primary" id="addUrlBtn">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit URL List Modal (Detected Games) -->
+    <div id="editUrlListModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit URL List <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="This list is loaded live from the URL each time the app starts or when you click 'Reload'. The content will be fetched from the internet, so make sure the URL is accessible."></span></h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-input-group">
+                    <label for="editUrlListUrl">URL:</label>
+                    <input type="url" id="editUrlListUrl" placeholder="https://example.com/list.txt" required>
+                </div>
+                <div class="modal-input-group">
+                    <label for="editUrlListName">Custom Name (optional):</label>
+                    <input type="text" id="editUrlListName" placeholder="Custom name for the list">
+                    <small class="form-text">If left empty, the name from the file header will be used.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelEditUrlListBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveEditUrlListBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit List Modal -->
+    <div id="editListModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Edit List: <span id="editListName"></span></h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="filter-group">
+                    <input type="text" id="editListFilter" placeholder="Filter apps..." class="filter-input">
+                </div>
+                <div class="table-container">
+                    <table id="editListTable" class="edit-table">
+                            <thead>
+                                <tr>
+                                    <th class="select-column">
+                                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th class="sortable" data-column="0">
+                                        App Title <span class="sort-arrow icon icon-arrows-up-down icon-xs" aria-hidden="true"></span>
+                                    </th>
+                                    <th class="sortable" data-column="1">
+                                        Process Name/Path <span class="sort-arrow icon icon-arrows-up-down icon-xs" aria-hidden="true"></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                        <tbody id="editListTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                <button class="btn btn-danger" onclick="removeSelectedRows()" id="removeSelectedBtn" disabled>Remove Selected</button>
+                <button class="btn btn-success" onclick="addNewRow()">Add New</button>
+                <button class="btn btn-primary" onclick="saveEditedList()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Category Modal -->
+    <div id="editCategoryModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Edit Game</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-app-form-grid">
+                    <div class="form-group edit-app-form-full hidden" id="edit-process-select-group">
+                        <div class="form-label-row">
+                            <label for="editCategoryProcess">Select a process:</label>
+                            <button type="button" class="form-text-link" id="editUsePathInsteadBtn">Use path instead</button>
+                        </div>
+                        <select id="editCategoryProcess" class="form-input">
+                            <option value="">Loading processes...</option>
+                        </select>
+                    </div>
+                    <div class="form-group edit-app-form-full" id="edit-location-group">
+                        <div class="form-label-row">
+                            <label for="edit-app-location">Location: <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="Full process path or pattern. * and ? match the entire path string (not folder-by-folder)."></span></label>
+                            <button type="button" class="form-text-link" id="editUseProcessInsteadBtn">Select process instead</button>
+                        </div>
+                        <div class="location-input-group">
+                            <input type="text" id="edit-app-location" placeholder="Enter file path..." class="form-input">
+                            <button type="button" id="edit-browse-location-btn" class="btn btn-secondary">Browse</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-category-input">Category:</label>
+                        <div class="search-container">
+                            <input type="text" id="edit-category-input" class="form-input" 
+                                   placeholder="Search categories...">
+                            <div id="edit-category-results" class="search-results"></div>
+                        </div>
+                    </div>
+                    <div class="form-group" id="edit-app-list-group">
+                        <label for="edit-app-list">List</label>
+                        <select id="edit-app-list" class="form-input"></select>
+                        <div id="edit-app-list-readonly" class="form-readonly-text hidden"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-window-title">Window Title (optional) <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="Used to distinguish between different games using the same executable. Use * and ? as wildcards."></span></label>
+                        <div class="window-title-list" id="edit-window-title-list">
+                            <div class="window-title-row">
+                                <input type="text" id="edit-window-title" placeholder="Enter window title..." class="form-input window-title-input">
+                                <button type="button" class="btn btn-secondary window-title-add-btn" id="edit-window-title-add" title="Add alternative window title"><span class="icon icon-plus icon-sm" aria-hidden="true"></span></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-app-title">Custom Title (optional):</label>
+                        <input type="text" id="edit-app-title" placeholder="Enter app title..." class="form-input">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="modal-footer-left">
+                    <button type="button" class="btn btn-secondary" id="editStreamTitleBtn">Assign stream title</button>
+                    <button type="button" class="btn btn-secondary" id="editExcludeAppBtn">Exclude app</button>
+                </div>
+                <button class="btn btn-secondary" id="cancelCategoryBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveCategoryBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove App Modal -->
+    <div id="removeAppModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Remove App</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <p id="removeAppMessage">Are you sure you want to remove this app from the detected apps list?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelRemoveBtn">Cancel</button>
+                <button class="btn btn-danger" id="confirmRemoveBtn">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add to Excluded Apps Modal -->
+    <div id="addToExcludedModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Add to Excluded Apps</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <p id="excludeAppMessage">Are you sure you want to add this app to the excluded apps list?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelExcludeBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmExcludeBtn">Add to Excluded</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Category Manually Modal -->
+    <div id="addCategoryModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Add Game</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-app-form-grid">
+                    <div class="form-group edit-app-form-full" id="add-process-select-group">
+                        <div class="form-label-row">
+                            <label for="addCategoryProcess">Select a process:</label>
+                            <button type="button" class="form-text-link" id="addUsePathInsteadBtn">Use path instead</button>
+                        </div>
+                        <select id="addCategoryProcess" class="form-input">
+                            <option value="">Loading processes...</option>
+                        </select>
+                    </div>
+                    <div class="form-group edit-app-form-full hidden" id="add-location-group">
+                        <div class="form-label-row">
+                            <label for="addCategoryLocation">Location: <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="Full process path or pattern. * and ? match the entire path string (not folder-by-folder)."></span></label>
+                            <button type="button" class="form-text-link" id="addUseProcessInsteadBtn">Select process instead</button>
+                        </div>
+                        <div class="location-input-group">
+                            <input type="text" id="addCategoryLocation" placeholder="Enter file path..." class="form-input">
+                            <button type="button" id="browseLocationBtn" class="btn btn-secondary">Browse</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="addCategoryName">Category:</label>
+                        <div class="search-container">
+                            <input type="text" id="addCategoryName" placeholder="Search categories..." class="form-input">
+                            <div class="search-results" id="add-category-results"></div>
+                        </div>
+                    </div>
+                    <div class="form-group" id="add-app-list-group">
+                        <label for="add-app-list">List</label>
+                        <select id="add-app-list" class="form-input"></select>
+                        <div id="add-app-list-readonly" class="form-readonly-text hidden"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="addWindowTitle">Window Title (optional) <span class="help-icon icon icon-question-mark-circle icon-sm window-title-tooltip" data-tooltip="Used to distinguish between different games using the same executable. Use * and ? as wildcards."></span></label>
+                        <div class="window-title-list" id="add-window-title-list">
+                            <div class="window-title-row">
+                                <input type="text" id="addWindowTitle" placeholder="Enter window title..." class="form-input window-title-input">
+                                <button type="button" class="btn btn-secondary window-title-add-btn" id="add-window-title-add" title="Add alternative window title"><span class="icon icon-plus icon-sm" aria-hidden="true"></span></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="addCategoryTitle">Custom Title (optional):</label>
+                        <input type="text" id="addCategoryTitle" placeholder="Enter app title..." class="form-input">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAddCategoryBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveAddCategoryBtn">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-Game Stream Title Modal (kept before the other title modals so they stack above it) -->
+    <div id="gameTitleModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Assign stream title: <span id="gameTitleGameName"></span></h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="title-presets-main">
+                    <div class="title-presets-list" id="game-title-presets-list">
+                        <!-- Dynamic content -->
+                    </div>
+                    <div class="title-presets-actions detected-app-actions">
+                        <button type="button" id="gameTitleAddNewBtn" class="btn" title="Add new"><span class="icon icon-plus icon-sm" aria-hidden="true"></span></button>
+                        <button type="button" id="gameTitleAddExistingBtn" class="btn" title="Add existing"><span class="icon icon-puzzle-piece icon-sm" aria-hidden="true"></span></button>
+                        <button type="button" id="gameTitleEditBtn" class="btn" title="Edit" disabled><span class="icon icon-pencil-square icon-sm" aria-hidden="true"></span></button>
+                        <button type="button" id="gameTitleUnassignBtn" class="btn" title="Un-assign" disabled><span class="icon icon-x-circle icon-sm" aria-hidden="true"></span></button>
+                        <button type="button" id="gameTitleRemoveBtn" class="btn" title="Remove entirely" disabled><span class="icon icon-trash icon-sm" aria-hidden="true"></span></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="gameTitleCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pick Existing Title Preset Modal -->
+    <div id="existingTitleModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Add Existing Title</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="title-presets-list" id="existing-title-list">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="existingTitleCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="existingTitleAssignBtn" disabled>Assign</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Title Preset Modal -->
+    <div id="titlePresetModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2 id="titlePresetModalHeader">Add Title Preset</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="titlePresetInput">Stream Title:</label>
+                    <input type="text" id="titlePresetInput" placeholder="Enter stream title..." class="form-input">
+                    <p class="form-hint">Use %cat to insert the current category name.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="titlePresetImportBtn">Import current title</button>
+                <button class="btn btn-secondary" id="titlePresetSaveAssignBtn">Save &amp; Assign to Game</button>
+                <button class="btn btn-primary" id="titlePresetSaveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Title Preset to Game Modal -->
+    <div id="assignTitleModal" class="modal">
+        <div class="modal-content edit-modal">
+            <div class="modal-header">
+                <h2>Assign to Game</h2>
+                <button class="modal-close" title="Close"><span class="icon icon-x-mark icon-md" aria-hidden="true"></span></button>
+            </div>
+            <div class="modal-body">
+                <p class="assign-title-target">Title: <span id="assignTitleName"></span></p>
+                <div class="filter-group">
+                    <input type="text" id="assignTitleFilter" placeholder="Search games..." class="filter-input">
+                </div>
+                <div class="assign-game-list" id="assignGameList">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="assignTitleCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="assignTitleConfirmBtn" disabled>Assign</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

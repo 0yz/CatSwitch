@@ -1,0 +1,3 @@
+# Dev / release packaging (ship path is package.py, not pip install).
+-r requirements.txt
+pyinstaller>=6.3.0

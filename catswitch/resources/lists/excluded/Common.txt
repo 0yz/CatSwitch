@@ -1,0 +1,12 @@
+# Common Apps
+# Version: 1
+# Format: executable,description
+catswitch.exe;CatSwitch
+*:\\Windows\\**;Windows OS Folder
+*:\\Program Files\\WindowsApps\\**;Windows Apps
+*:\\Program Files\\Common Files\\**;Common Program Files
+*:\\Program Files (x86)\\Common Files\\**;Common Program Files x86
+*:\\Program Files\\Windows**;Windows Program Files
+*:\\Program Files (x86)\\Windows**;Windows Program Files x86
+*:\\Program Files\\Microsoft**;Microsoft Program Files
+*:\\Program Files (x86)\\Microsoft**;Microsoft Program Files x86

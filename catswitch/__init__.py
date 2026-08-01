@@ -1,0 +1,1 @@
+"""CatSwitch package."""

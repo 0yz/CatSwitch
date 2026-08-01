@@ -1,0 +1,72 @@
+:root {
+    --bg-color: #faf3ec;
+    --text-color: #1a1512;
+    --text-secondary: #4a3f38;
+    --text-muted: #6b5d54;
+    --muted-text: #948578;
+    --white: #fff;
+
+    --font-family: 'Switzer', sans-serif;
+
+    --accent-color: #ff6f9c;
+    --accent-hover: #d94d7a;
+    --accent-light: #ff9cbc;
+    --accent-soft: rgba(255, 111, 156, 0.2);
+    --accent-border-soft: rgba(255, 111, 156, 0.4);
+
+    --hover-color: #f3e6dc;
+    --hover-color-half: color-mix(in srgb, var(--hover-color) 50%, transparent);
+    --hover-bg: #ecd9cd;
+    --input-bg: #fff9f3;
+    --toggle-notch-color: #ffffff;
+    --back-to-top-color: #ffffff;
+    --btn-add-color: #ffffff;
+    --tab-active-color: #fff9f3;
+    --tab-inactive-color: #f0e2d6;
+    --tab-button-active-color:#6b5d54;
+    --modal-bg: #fffbf7;
+
+    --border-color: #e6d5c7;
+    --border-focus: #d99fb0;
+    --modal-border: #eaddce;
+
+    --button-secondary: var(--modal-bg);
+    --button-secondary-hover: #f5e9de;
+    --button-secondary-border: #dcc9b8;
+    --button-secondary-border-hover: #cbb5a0;
+    --button-success: #4caf50;
+    --button-success-hover: #3d8b40;
+    --button-cancel: var(--button-secondary-border-hover);
+    --button-cancel-hover: #b89e87;
+
+    --twitch-purple: #9146ff;
+    --twitch-purple-hover: #772ce8;
+    --twitch-purple-soft: rgba(145, 70, 255, 0.25);
+
+    --status-success: #2e7d32;
+    --status-error: #e53952;
+
+    --shadow-color: rgb(60 40 30 / 15%);
+    --shadow-deep: rgb(40 25 18 / 25%);
+    --loading-overlay-bg: rgba(250, 243, 236, 0.85);
+    --focus-ring: rgba(255, 111, 156, 0.25);
+    --selected-bg: rgba(255, 111, 156, 0.12);
+    --overlay-bg: rgba(30, 20, 15, 0.4);
+    --overlay-bg-dark: rgba(30, 20, 15, 0.6);
+    --tooltip-shadow: rgba(60, 40, 30, 0.25);
+    --svg-fill: #2b2320;
+
+    --oauth-bg: #fff9f3;
+    --oauth-text: #1a1512;
+    --oauth-text-muted: #7a6a5f;
+
+    --scrollbar-track: #f3e6dc;
+    --scrollbar-thumb: #e0c8b8;
+    --scrollbar-thumb-hover: #d4b5a0;
+    --scrollbar-thumb-active: #c7a48d;
+    --scrollbar-border: #eaddce;
+
+    --modal-text: #1a1512;
+    --modal-text-secondary: #4a3f38;
+    --modal-text-muted: #6b5d54;
+}
