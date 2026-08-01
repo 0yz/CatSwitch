@@ -854,6 +854,39 @@ class DesktopApp:
                 def js_get_autostart_with_windows():
                     return load_autostart_with_windows()
 
+                def js_open_file_dialog(file_types=None, directory=''):
+                    """Native open-file dialog (pywebview). Prefer this over Flask/tkinter."""
+                    if not window:
+                        return {"success": False, "error": "No window available"}
+                    try:
+                        types = file_types
+                        if not types:
+                            types = ("Text files (*.txt)", "All files (*.*)")
+                        elif isinstance(types, list):
+                            types = tuple(types)
+                        elif not isinstance(types, tuple):
+                            types = (str(types),)
+
+                        result = window.create_file_dialog(
+                            webview.FileDialog.OPEN,
+                            directory=directory or "",
+                            allow_multiple=False,
+                            file_types=types,
+                        )
+                        if not result:
+                            return {"success": False, "message": "No file selected"}
+                        path = result[0] if isinstance(result, (list, tuple)) else result
+                        if not path:
+                            return {"success": False, "message": "No file selected"}
+                        return {
+                            "success": True,
+                            "filePath": path,
+                            "fileName": os.path.basename(path),
+                        }
+                    except Exception as exc:
+                        logger.error("Error opening file dialog: %s", exc, exc_info=True)
+                        return {"success": False, "error": str(exc)}
+
                 # Expose functions individually - this is key for your PyWebView version
                 window.expose(js_minimize_window)
                 window.expose(js_close_window)
@@ -866,6 +899,7 @@ class DesktopApp:
                 window.expose(js_toggle_debug)
                 window.expose(js_focus_window)
                 window.expose(js_resize_window)
+                window.expose(js_open_file_dialog)
                 
                 logger.info("JavaScript API functions exposed successfully")
         except Exception as e:

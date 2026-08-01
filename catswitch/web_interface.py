@@ -2492,66 +2492,6 @@ def add_local_list():
             'error': str(e)
         })
 
-@app.route('/api/excluded-apps/open-file-dialog', methods=['POST'])
-def open_file_dialog():
-    """Open a file dialog to select a local file"""
-    logger.info("File dialog API endpoint called")
-    try:
-        # Create a tkinter root window
-        import tkinter as tk
-        from tkinter import filedialog
-        
-        logger.info("Initializing tkinter")
-        # Create the root window
-        root = tk.Tk()
-        
-        # Make it invisible
-        root.withdraw()
-        
-        # Make it stay on top
-        root.attributes('-topmost', True)
-        
-        logger.info("Opening file dialog")
-        # Open the file dialog directly without using a callback function
-        file_path = filedialog.askopenfilename(
-            title="Select Excluded Apps List",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
-        )
-        
-        logger.info(f"File dialog result: {'File selected' if file_path else 'No file selected'}")
-        
-        # Process result
-        if file_path:
-            file_name = os.path.basename(file_path)
-            result = {
-                "success": True,
-                "filePath": file_path,
-                "fileName": file_name
-            }
-            logger.info(f"Selected file: {file_path}")
-        else:
-            result = {
-                "success": False,
-                "message": "No file selected"
-            }
-            logger.info("No file selected")
-            
-        # Destroy the root window
-        try:
-            root.destroy()
-            logger.info("Tkinter root destroyed successfully")
-        except Exception as e:
-            logger.error(f"Error destroying tkinter root: {e}")
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Error opening file dialog: {e}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
-
 @app.route('/api/excluded-apps/download', methods=['POST'])
 def api_excluded_apps_download():
     """API endpoint to download an excluded apps list from a URL."""

@@ -1563,6 +1563,57 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+async function pickLocalFilePath(fileTypes, acceptAttribute, inputId) {
+    if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.js_open_file_dialog === 'function') {
+        try {
+            const result = await window.pywebview.api.js_open_file_dialog(fileTypes || null);
+            if (result && result.success && result.filePath) {
+                return result.filePath;
+            }
+            return null;
+        } catch (error) {
+            console.error('Native file dialog failed:', error);
+        }
+    }
+
+    return await new Promise((resolve) => {
+        const existingInput = document.getElementById(inputId);
+        if (existingInput) {
+            document.body.removeChild(existingInput);
+        }
+
+        const fileInput = document.createElement('input');
+        fileInput.id = inputId;
+        fileInput.type = 'file';
+        if (acceptAttribute) {
+            fileInput.accept = acceptAttribute;
+        }
+        fileInput.style.display = 'none';
+
+        const cleanup = () => {
+            if (document.body.contains(fileInput)) {
+                document.body.removeChild(fileInput);
+            }
+        };
+
+        fileInput.onchange = (event) => {
+            const file = event.target.files[0];
+            cleanup();
+            resolve(file ? (file.path || file.name) : null);
+        };
+
+        fileInput.oncancel = () => {
+            setTimeout(() => {
+                cleanup();
+                resolve(null);
+            }, 100);
+        };
+
+        document.body.appendChild(fileInput);
+        fileInput.click();
+    });
+}
+
 function formatPathTail(path, maxVisible = 44) {
     if (!path) return '';
     if (path.length <= maxVisible) return path;
@@ -5690,38 +5741,15 @@ function setupAddCategoryModalEventListeners() {
     });
     
     if (browseBtn) {
-        browseBtn.onclick = () => {
-            const existingInput = document.getElementById('temp-file-input-add');
-            if (existingInput) {
-                document.body.removeChild(existingInput);
+        browseBtn.onclick = async () => {
+            const path = await pickLocalFilePath(
+                ['Executable (*.exe)', 'All files (*.*)'],
+                '.exe',
+                'temp-file-input-add'
+            );
+            if (path) {
+                document.getElementById('addCategoryLocation').value = path;
             }
-            
-            const fileInput = document.createElement('input');
-            fileInput.id = 'temp-file-input-add';
-            fileInput.type = 'file';
-            fileInput.accept = '.exe';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    document.getElementById('addCategoryLocation').value = file.path || file.name;
-                }
-                if (document.body.contains(fileInput)) {
-                    document.body.removeChild(fileInput);
-                }
-            };
-            
-            fileInput.oncancel = () => {
-                setTimeout(() => {
-                    if (document.body.contains(fileInput)) {
-                        document.body.removeChild(fileInput);
-                    }
-                }, 100);
-            };
-            
-            document.body.appendChild(fileInput);
-            fileInput.click();
         };
     }
     
@@ -6275,44 +6303,15 @@ function setupEditCategoryModal() {
     
     // Add browse button handler
     if (browseBtn) {
-        browseBtn.onclick = () => {
-            // Remove any existing file input first
-            const existingInput = document.getElementById('temp-file-input');
-            if (existingInput) {
-                document.body.removeChild(existingInput);
+        browseBtn.onclick = async () => {
+            const path = await pickLocalFilePath(
+                ['Executable (*.exe)', 'All files (*.*)'],
+                '.exe',
+                'temp-file-input'
+            );
+            if (path && locationInput) {
+                locationInput.value = path;
             }
-            
-            // Create a file input element for file selection
-            const fileInput = document.createElement('input');
-            fileInput.id = 'temp-file-input';
-            fileInput.type = 'file';
-            fileInput.accept = '.exe';
-            fileInput.style.display = 'none';
-            
-            fileInput.onchange = (event) => {
-                const file = event.target.files[0];
-                if (file && locationInput) {
-                    // Get the full path of the selected file
-                    locationInput.value = file.path || file.name;
-                }
-                // Clean up the temporary input
-                if (document.body.contains(fileInput)) {
-                    document.body.removeChild(fileInput);
-                }
-            };
-            
-            // Handle cancel case - clean up after a short delay
-            fileInput.oncancel = () => {
-                setTimeout(() => {
-                    if (document.body.contains(fileInput)) {
-                        document.body.removeChild(fileInput);
-                    }
-                }, 100);
-            };
-            
-            // Add to DOM temporarily and trigger click
-            document.body.appendChild(fileInput);
-            fileInput.click();
         };
     }
     
