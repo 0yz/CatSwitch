@@ -357,6 +357,8 @@ def _schedule_silent_install(installer_path: str, work_dir: Optional[str] = None
         "echo %DATE% %TIME% App gone; starting Setup>>\"%LOG%\"\r\n"
         'start "" /wait "%INSTALLER%" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
         "/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NORESTARTAPPLICATIONS "
+        # Always target this install's folder (user's chosen path), not only DefaultDirName.
+        f'/DIR="{app_dir_q}" '
         f'/LOG="{log_q}.setup.log"\r\n'
         "set SETUP_EXIT=%ERRORLEVEL%\r\n"
         "echo %DATE% %TIME% Setup exit code %SETUP_EXIT%>>\"%LOG%\"\r\n"

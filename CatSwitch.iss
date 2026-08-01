@@ -162,8 +162,28 @@ begin
   WizardForm.NextButton.Enabled := PrivacyAckCheck.Checked;
 end;
 
+procedure ApplySavedInstallPath;
+var
+  SavedPath: String;
+  Tail: String;
+begin
+  { In-app silent updates pass /DIR= (running install folder) — that wins. }
+  Tail := UpperCase(GetCmdTail);
+  if (Pos('/DIR=', Tail) > 0) or (Pos('/DIR="', Tail) > 0) then
+    Exit;
+
+  { Otherwise prefer HKCU InstallPath so interactive upgrades keep the user's folder. }
+  if RegQueryStringValue(HKCU, 'Software\{#MyAppName}', 'InstallPath', SavedPath) then
+  begin
+    if (SavedPath <> '') and DirExists(SavedPath) then
+      WizardForm.DirEdit.Text := SavedPath;
+  end;
+end;
+
 procedure InitializeWizard;
 begin
+  ApplySavedInstallPath;
+
   CreateAckPage(
     wpWelcome,
     'License',

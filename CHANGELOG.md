@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 Notable changes to CatSwitch.
 
@@ -19,6 +19,7 @@ Notable changes to CatSwitch.
 - Ignore window-title churn once the focused process is already identified as a game
 - Added Help, Changelog, and Issues links on the Info tab
 - Fixed a potential issue with applying Twitch category
+- Silent updates always reinstall into the existing install folder (`/DIR=` + saved InstallPath)
 
 ## 0.1.0
 
