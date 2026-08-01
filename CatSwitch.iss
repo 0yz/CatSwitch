@@ -264,7 +264,7 @@ begin
   NeedsRestart := False;
   Result := '';
   KillRunningCatSwitch;
-  { Brief pause so WebView2 / DLL handles under {app}\_internal can release }
+  { Brief pause so WebView2 / DLL handles under _internal can release }
   Sleep(2500);
   KillRunningCatSwitch;
   Exec(
