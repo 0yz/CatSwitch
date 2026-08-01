@@ -13,6 +13,7 @@ Notable changes to CatSwitch.
 - Fixed path containment checks to resolve symlinks and ignore Windows path casing
 - Replaced the tkinter file dialog with the native pywebview dialog
 - Moved update helper files into a private temp folder
+- Require Edge WebView2 at startup (Download / Exit dialog if missing; no MSHTML fallback)
 
 ## 0.1.0
 

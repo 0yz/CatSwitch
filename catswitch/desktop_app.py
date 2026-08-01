@@ -42,6 +42,10 @@ logger = logging.getLogger('catswitch.desktop_app')
 
 # Fixed by Twitch Developer Console redirect URI (http://localhost:51111) — do not change.
 LOCAL_SERVER_PORT = 51111
+WEBVIEW2_DOWNLOAD_URL = (
+    "https://developer.microsoft.com/en-us/microsoft-edge/webview2/consumer"
+)
+_WEBVIEW2_CLIENT_GUID = "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
 _SINGLE_INSTANCE_MUTEX_NAME = "Local\\CatSwitch_SingleInstance"
 _instance_mutex = None
 _instance_owned = False
@@ -49,6 +53,156 @@ _force_exit_scheduled = False
 
 # Global variable for window reference
 window = None
+
+
+def is_webview2_runtime_installed() -> bool:
+    """True when Edge WebView2 Runtime is present (Evergreen / per-user / per-machine)."""
+    import winreg
+
+    paths = (
+        (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{_WEBVIEW2_CLIENT_GUID}"),
+        (winreg.HKEY_LOCAL_MACHINE, rf"SOFTWARE\Microsoft\EdgeUpdate\Clients\{_WEBVIEW2_CLIENT_GUID}"),
+        (winreg.HKEY_CURRENT_USER, rf"Software\Microsoft\EdgeUpdate\Clients\{_WEBVIEW2_CLIENT_GUID}"),
+    )
+    for root, subkey in paths:
+        try:
+            with winreg.OpenKey(root, subkey) as key:
+                pv, _ = winreg.QueryValueEx(key, "pv")
+            if pv and str(pv).strip() not in ("", "0.0.0.0"):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _message_box_download_or_exit(title: str, main: str, content: str) -> bool:
+    """Fallback Yes/No MessageBox. Yes = open download page."""
+    import ctypes
+
+    MB_YESNO = 0x00000004
+    MB_ICONWARNING = 0x00000030
+    MB_SETFOREGROUND = 0x00010000
+    IDYES = 6
+    text = (
+        f"{main}\n\n{content}\n\n"
+        "Click Yes to open the Download page, or No to Exit."
+    )
+    choice = ctypes.windll.user32.MessageBoxW(
+        None, text, title, MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND
+    )
+    return choice == IDYES
+
+
+def _task_dialog_download_or_exit(title: str, main: str, content: str) -> bool:
+    """Native TaskDialog with Download / Exit. Returns True if Download was chosen."""
+    import ctypes
+    from ctypes import wintypes
+
+    # CommCtrl.h packs this structure at 1 byte.
+    class TASKDIALOG_BUTTON(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("nButtonID", ctypes.c_int),
+            ("pszButtonText", wintypes.LPCWSTR),
+        ]
+
+    class TASKDIALOGCONFIG(ctypes.Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("cbSize", ctypes.c_uint),
+            ("hwndParent", wintypes.HWND),
+            ("hInstance", wintypes.HINSTANCE),
+            ("dwFlags", ctypes.c_uint),
+            ("dwCommonButtons", ctypes.c_uint),
+            ("pszWindowTitle", wintypes.LPCWSTR),
+            ("pszMainIcon", ctypes.c_void_p),
+            ("pszMainInstruction", wintypes.LPCWSTR),
+            ("pszContent", wintypes.LPCWSTR),
+            ("cButtons", ctypes.c_uint),
+            ("pButtons", ctypes.POINTER(TASKDIALOG_BUTTON)),
+            ("nDefaultButton", ctypes.c_int),
+            ("cRadioButtons", ctypes.c_uint),
+            ("pRadioButtons", ctypes.c_void_p),
+            ("nDefaultRadioButton", ctypes.c_int),
+            ("pszVerificationText", wintypes.LPCWSTR),
+            ("pszExpandedInformation", wintypes.LPCWSTR),
+            ("pszExpandedControlText", wintypes.LPCWSTR),
+            ("pszCollapsedControlText", wintypes.LPCWSTR),
+            ("pszFooterIcon", ctypes.c_void_p),
+            ("pszFooter", wintypes.LPCWSTR),
+            ("pfCallback", ctypes.c_void_p),
+            ("lpCallbackData", ctypes.c_ssize_t),
+            ("cxWidth", ctypes.c_uint),
+        ]
+
+    ID_DOWNLOAD = 1001
+    ID_EXIT = 1002
+    TDF_ALLOW_DIALOG_CANCELLATION = 0x0008
+    # TD_WARNING_ICON = MAKEINTRESOURCEW(-1)
+    TD_WARNING_ICON = ctypes.c_void_p(ctypes.c_ushort(-1).value)
+
+    buttons = (TASKDIALOG_BUTTON * 2)(
+        TASKDIALOG_BUTTON(ID_DOWNLOAD, "Download"),
+        TASKDIALOG_BUTTON(ID_EXIT, "Exit"),
+    )
+    cfg = TASKDIALOGCONFIG()
+    cfg.cbSize = ctypes.sizeof(TASKDIALOGCONFIG)
+    cfg.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION
+    cfg.pszWindowTitle = title
+    cfg.pszMainIcon = TD_WARNING_ICON
+    cfg.pszMainInstruction = main
+    cfg.pszContent = content
+    cfg.cButtons = 2
+    cfg.pButtons = ctypes.cast(buttons, ctypes.POINTER(TASKDIALOG_BUTTON))
+    cfg.nDefaultButton = ID_DOWNLOAD
+
+    pn_button = ctypes.c_int(0)
+    try:
+        comctl32 = ctypes.windll.comctl32
+        comctl32.TaskDialogIndirect.argtypes = [
+            ctypes.POINTER(TASKDIALOGCONFIG),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+            ctypes.POINTER(ctypes.c_int),
+        ]
+        comctl32.TaskDialogIndirect.restype = ctypes.HRESULT
+        hr = comctl32.TaskDialogIndirect(
+            ctypes.byref(cfg),
+            ctypes.byref(pn_button),
+            None,
+            None,
+        )
+    except Exception:
+        return _message_box_download_or_exit(title, main, content)
+
+    if hr != 0:
+        return _message_box_download_or_exit(title, main, content)
+    return pn_button.value == ID_DOWNLOAD
+
+
+def ensure_webview2_or_exit() -> None:
+    """Require WebView2 Runtime; offer Download or Exit, then always quit if missing."""
+    if os.name != "nt":
+        return
+    if is_webview2_runtime_installed():
+        return
+
+    logger.error("Microsoft Edge WebView2 Runtime is not installed")
+    open_download = _task_dialog_download_or_exit(
+        "CatSwitch",
+        "WebView2 Runtime is missing",
+        "CatSwitch needs the Microsoft Edge WebView2 Runtime to display its interface.\n\n"
+        "Download installs it from Microsoft. After it finishes, start CatSwitch again.\n\n"
+        "Exit closes the app without downloading.",
+    )
+    if open_download:
+        try:
+            import webbrowser
+
+            webbrowser.open(WEBVIEW2_DOWNLOAD_URL)
+        except Exception as exc:
+            logger.error("Could not open WebView2 download page: %s", exc)
+    os._exit(1)
 
 
 def schedule_force_process_exit(delay_sec: float = 2.0) -> None:
@@ -908,7 +1062,9 @@ class DesktopApp:
     def create_window(self, debug=False):
         """Create the PyWebView window"""
         global window
-        
+
+        ensure_webview2_or_exit()
+
         # Start Flask server in a thread
         self.start_server()
         
@@ -1055,9 +1211,9 @@ class DesktopApp:
         window.events.shown += on_shown
         window.events.closing += on_closing
         
-        # Start the webview
-        logger.info("Starting PyWebView")
-        webview.start(debug=debug)
+        # Start the webview — pin Edge WebView2 (no silent MSHTML fallback)
+        logger.info("Starting PyWebView (edgechromium)")
+        webview.start(debug=debug, gui="edgechromium")
         # If the GUI loop returned but something still keeps us alive, hard-exit.
         schedule_force_process_exit(0.5)
         os._exit(0)
