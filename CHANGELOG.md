@@ -14,6 +14,7 @@ Notable changes to CatSwitch.
 - Replaced the tkinter file dialog with the native pywebview dialog
 - Moved update helper files into a private temp folder
 - Require Edge WebView2 at startup (Download / Exit dialog if missing; no MSHTML fallback)
+- Ignore window-title churn once the focused process is already identified as a game
 
 ## 0.1.0
 

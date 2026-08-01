@@ -665,6 +665,16 @@ def clear_active_game_tracking() -> None:
     last_game_name = None
     last_game_pid = None
 
+
+def _is_active_tracked_game_focus(process_name, pid) -> bool:
+    """True when this focus is already the remembered game (ignore title churn)."""
+    if not last_game_name or not last_game_process:
+        return False
+    if pid is not None and last_game_pid is not None:
+        return pid == last_game_pid
+    return bool(process_name) and process_name == last_game_process
+
+
 def apply_saved_app_match(detected_app, process_name, process_path, callback, pid=None, window_title=None):
     """Apply a saved detected-app mapping to the Twitch category callback."""
     game_name = detected_app.get('twitch_category')
@@ -1147,6 +1157,7 @@ def on_window_change(callback, client_id=None, oauth_token=None, generation=None
 
     tracked_process_name = None
     tracked_window_title = None
+    tracked_pid = None
     focus_started_at = 0.0
     handled_for_current_focus = False
     
@@ -1171,6 +1182,7 @@ def on_window_change(callback, client_id=None, oauth_token=None, generation=None
                 last_game_pid = None
                 tracked_process_name = None
                 tracked_window_title = None
+                tracked_pid = None
                 handled_for_current_focus = False
                 sleep(1)  # Add a delay after process change detection
                 continue
@@ -1180,14 +1192,16 @@ def on_window_change(callback, client_id=None, oauth_token=None, generation=None
             from catswitch.settings import get_switch_delay_seconds
             switch_delay_seconds = get_switch_delay_seconds()
 
-            window_identity_changed = (
+            process_focus_changed = (
                 current_process_name != tracked_process_name
-                or current_window_title != tracked_window_title
+                or current_pid != tracked_pid
             )
+            title_changed = current_window_title != tracked_window_title
 
-            if window_identity_changed:
+            if process_focus_changed:
                 tracked_process_name = current_process_name
                 tracked_window_title = current_window_title
+                tracked_pid = current_pid
                 focus_started_at = current_time
                 handled_for_current_focus = False
                 if switch_delay_seconds <= 0 and not category_locked:
@@ -1202,6 +1216,29 @@ def on_window_change(callback, client_id=None, oauth_token=None, generation=None
                         oauth_token,
                     )
                     handled_for_current_focus = True
+            elif title_changed:
+                tracked_window_title = current_window_title
+                # Same process already mapped to a game — title timers/FPS/etc. are noise.
+                if _is_active_tracked_game_focus(current_process_name, current_pid):
+                    logger.debug(
+                        "Ignoring title change for already-identified game %s",
+                        last_game_name,
+                    )
+                else:
+                    focus_started_at = current_time
+                    handled_for_current_focus = False
+                    if switch_delay_seconds <= 0 and not category_locked:
+                        logger.info("Detected window title change!")
+                        _evaluate_focused_window(
+                            current_process_name,
+                            current_process_path,
+                            current_window_title,
+                            current_pid,
+                            guarded_callback,
+                            client_id,
+                            oauth_token,
+                        )
+                        handled_for_current_focus = True
             elif (
                 not handled_for_current_focus
                 and current_process_name
