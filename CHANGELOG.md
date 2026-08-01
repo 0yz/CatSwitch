@@ -17,6 +17,7 @@ Notable changes to CatSwitch.
 ### Fixed
 - Require Edge WebView2 at startup (Download / Exit dialog if missing; no MSHTML fallback)
 - Ignore window-title churn once the focused process is already identified as a game
+- Added Help, Changelog, and Issues links on the Info tab
 
 ## 0.1.0
 
