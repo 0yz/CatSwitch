@@ -1,4 +1,4 @@
-![CatSwitch Header](https://switch.cat/wp-content/uploads/2026/08/catSwitchHeaderGit.png)
+![CatSwitch — Your fully automatic Twitch category & title switcher](https://switch.cat/wp-content/uploads/2026/08/catSwitchHeaderGit.png)
 
 # [CatSwitch](https://switch.cat/)
 
@@ -29,6 +29,10 @@ pip install -r requirements-dev.txt
 python package.py --installer
 ```
 
+## Website
+
+https://switch.cat/
+
 ## License
 
-[GPL-3.0](LICENSE) · [Privacy](PRIVACY.md)
+[GPL-3.0](LICENSE) · [Privacy](PRIVACY.md) · [Third-party notices](THIRD_PARTY_NOTICES.txt)
